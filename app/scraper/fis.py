@@ -5,15 +5,13 @@ import httpx
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
 
-from app.config import FIS_CALENDAR_URL, FIS_EVENT_URL, FIS_RESULTS_URL
+from app.config import FIS_CALENDAR_URL, FIS_RESULTS_URL
 from app.database import SessionLocal
 from app.models import Competition, Result
 
 logger = logging.getLogger(__name__)
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-}
+HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
 
 def sync_competitions_from_fis():
@@ -77,9 +75,7 @@ def _parse_calendar_row(row, db: Session):
 
     existing = None
     if fis_event_id:
-        existing = db.query(Competition).filter(
-            Competition.fis_event_id == fis_event_id
-        ).first()
+        existing = db.query(Competition).filter(Competition.fis_event_id == fis_event_id).first()
 
     if existing:
         return
@@ -183,11 +179,7 @@ def _scrape_results(db: Session, competition: Competition):
     if not rows:
         return
 
-    existing_results = (
-        db.query(Result)
-        .filter(Result.competition_id == competition.id)
-        .count()
-    )
+    existing_results = db.query(Result).filter(Result.competition_id == competition.id).count()
     if existing_results > 0:
         return
 
@@ -215,13 +207,15 @@ def _scrape_results(db: Session, competition: Competition):
         except (ValueError, TypeError):
             total_points = None
 
-        db.add(Result(
-            competition_id=competition.id,
-            rank=rank,
-            athlete_name=name,
-            nation=nation,
-            total_points=total_points,
-        ))
+        db.add(
+            Result(
+                competition_id=competition.id,
+                rank=rank,
+                athlete_name=name,
+                nation=nation,
+                total_points=total_points,
+            )
+        )
 
     competition.status = "completed"
     logger.info(f"Results imported for {competition.name}")

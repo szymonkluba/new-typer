@@ -1,0 +1,11 @@
+target-version = "py311"
+line-length = 120
+
+exclude = ["venv", ".git", "__pycache__"]
+
+[lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]
+
+[lint.per-file-ignores]
+"app/scraper/fis.py" = ["F401", "E741"]

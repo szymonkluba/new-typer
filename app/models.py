@@ -1,7 +1,15 @@
-from datetime import datetime, date
+from datetime import datetime
 
 from sqlalchemy import (
-    Column, Integer, String, Text, Float, Date, DateTime, ForeignKey, UniqueConstraint,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -63,6 +71,4 @@ class Bet(Base):
     user = relationship("User", back_populates="bets")
     competition = relationship("Competition", back_populates="bets")
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "competition_id", "position", name="uq_user_comp_pos"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "competition_id", "position", name="uq_user_comp_pos"),)

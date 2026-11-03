@@ -6,11 +6,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.database import Base, get_db
-from app.models import User, Competition, Result, Bet
-from app.auth.utils import hash_password
 from app.auth.dependencies import create_session_token
+from app.auth.utils import hash_password
 from app.config import COOKIE_NAME
+from app.database import Base, get_db
+from app.models import Bet, Competition, Result, User
 
 
 @pytest.fixture(scope="session")
@@ -52,9 +52,9 @@ def client(db):
 
     app.dependency_overrides[get_db] = _override_get_db
 
-    with patch("app.scraper.scheduler.start_scheduler"), \
-         patch("app.scraper.scheduler.stop_scheduler"):
+    with patch("app.scraper.scheduler.start_scheduler"), patch("app.scraper.scheduler.stop_scheduler"):
         from starlette.testclient import TestClient
+
         with TestClient(app) as c:
             yield c
 
@@ -67,6 +67,7 @@ def auth_client(client, db):
         token = create_session_token(user.id)
         client.cookies.set(COOKIE_NAME, token)
         return client
+
     return _make_auth_client
 
 
@@ -83,6 +84,7 @@ def make_user(db):
         db.commit()
         db.refresh(user)
         return user
+
     return _make_user
 
 
@@ -121,6 +123,7 @@ def make_competition(db):
         db.commit()
         db.refresh(comp)
         return comp
+
     return _make_competition
 
 
@@ -138,6 +141,7 @@ def make_result(db):
         db.commit()
         db.refresh(result)
         return result
+
     return _make_result
 
 
@@ -154,4 +158,5 @@ def make_bet(db):
         db.commit()
         db.refresh(bet)
         return bet
+
     return _make_bet

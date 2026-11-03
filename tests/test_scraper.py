@@ -1,14 +1,14 @@
 import sys
 from datetime import date
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.scraper.fis import _parse_fis_date, sync_results_from_fis, sync_competitions_from_fis
 from app.models import Competition, Result
-
+from app.scraper.fis import _parse_fis_date, sync_competitions_from_fis, sync_results_from_fis
 
 # --- _parse_fis_date ---
+
 
 class TestParseFisDate:
     def test_format_dmy(self):
@@ -68,6 +68,7 @@ RESULTS_HTML = """
 
 class _NoCloseSession:
     """Wraps a session to prevent close() from being called by the scraper."""
+
     def __init__(self, session):
         self._session = session
 
@@ -90,8 +91,10 @@ class TestSyncResults:
         mock_resp.raise_for_status = MagicMock()
 
         wrapped = _NoCloseSession(db)
-        with patch("app.scraper.fis.SessionLocal", return_value=wrapped), \
-             patch("app.scraper.fis.httpx.get", return_value=mock_resp):
+        with (
+            patch("app.scraper.fis.SessionLocal", return_value=wrapped),
+            patch("app.scraper.fis.httpx.get", return_value=mock_resp),
+        ):
             sync_results_from_fis()
 
         db.expire_all()
@@ -156,8 +159,10 @@ class TestSyncResults:
         mock_resp.raise_for_status = MagicMock()
 
         wrapped = _NoCloseSession(db)
-        with patch("app.scraper.fis.SessionLocal", return_value=wrapped), \
-             patch("app.scraper.fis.httpx.get", return_value=mock_resp):
+        with (
+            patch("app.scraper.fis.SessionLocal", return_value=wrapped),
+            patch("app.scraper.fis.httpx.get", return_value=mock_resp),
+        ):
             sync_results_from_fis()
 
         db.expire_all()
@@ -176,8 +181,10 @@ class TestSyncResults:
         mock_resp.raise_for_status = MagicMock()
 
         wrapped = _NoCloseSession(db)
-        with patch("app.scraper.fis.SessionLocal", return_value=wrapped), \
-             patch("app.scraper.fis.httpx.get", return_value=mock_resp):
+        with (
+            patch("app.scraper.fis.SessionLocal", return_value=wrapped),
+            patch("app.scraper.fis.httpx.get", return_value=mock_resp),
+        ):
             sync_results_from_fis()
 
         results = db.query(Result).filter(Result.competition_id == comp_id).all()
@@ -191,9 +198,12 @@ class TestSyncResults:
         )
         comp_id = comp.id
         import httpx
+
         wrapped = _NoCloseSession(db)
-        with patch("app.scraper.fis.SessionLocal", return_value=wrapped), \
-             patch("app.scraper.fis.httpx.get", side_effect=httpx.HTTPError("fail")):
+        with (
+            patch("app.scraper.fis.SessionLocal", return_value=wrapped),
+            patch("app.scraper.fis.httpx.get", side_effect=httpx.HTTPError("fail")),
+        ):
             sync_results_from_fis()
 
         results = db.query(Result).filter(Result.competition_id == comp_id).all()
@@ -208,7 +218,7 @@ class TestSyncResults:
         comp_id = comp.id
         rows = ""
         for i in range(15):
-            rows += f"<tr><td>{i+1}</td><td>POL</td><td>Athlete {i}</td><td>POL</td><td>{100-i}.0</td></tr>\n"
+            rows += f"<tr><td>{i + 1}</td><td>POL</td><td>Athlete {i}</td><td>POL</td><td>{100 - i}.0</td></tr>\n"
         html = f"<html><body><table><tbody>{rows}</tbody></table></body></html>"
 
         mock_resp = MagicMock()
@@ -216,8 +226,10 @@ class TestSyncResults:
         mock_resp.raise_for_status = MagicMock()
 
         wrapped = _NoCloseSession(db)
-        with patch("app.scraper.fis.SessionLocal", return_value=wrapped), \
-             patch("app.scraper.fis.httpx.get", return_value=mock_resp):
+        with (
+            patch("app.scraper.fis.SessionLocal", return_value=wrapped),
+            patch("app.scraper.fis.httpx.get", return_value=mock_resp),
+        ):
             sync_results_from_fis()
 
         db.expire_all()
@@ -226,6 +238,7 @@ class TestSyncResults:
 
 
 # --- sync_competitions_from_fis ---
+
 
 class TestSyncCompetitions:
     def test_sync_competitions_skips_without_playwright(self):
@@ -239,8 +252,10 @@ class TestSyncCompetitions:
         mock_pw = MagicMock()
         saved = {k: sys.modules.pop(k) for k in list(sys.modules) if k.startswith("playwright")}
         wrapped = _NoCloseSession(db)
-        with patch.dict(sys.modules, {"playwright": mock_pw, "playwright.sync_api": mock_pw.sync_api}), \
-             patch("app.scraper.fis.SessionLocal", return_value=wrapped), \
-             patch("app.scraper.fis._scrape_calendar", side_effect=RuntimeError("boom")):
+        with (
+            patch.dict(sys.modules, {"playwright": mock_pw, "playwright.sync_api": mock_pw.sync_api}),
+            patch("app.scraper.fis.SessionLocal", return_value=wrapped),
+            patch("app.scraper.fis._scrape_calendar", side_effect=RuntimeError("boom")),
+        ):
             sync_competitions_from_fis()
         sys.modules.update(saved)

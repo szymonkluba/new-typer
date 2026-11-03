@@ -1,14 +1,12 @@
 from types import SimpleNamespace
 
-import pytest
-
 from app.bets.scoring import (
+    EXACT_MATCH_POINTS,
+    PARTIAL_MATCH_POINTS,
+    get_user_total_points,
     normalize_name,
     score_bet,
     score_competition_bets,
-    get_user_total_points,
-    EXACT_MATCH_POINTS,
-    PARTIAL_MATCH_POINTS,
 )
 
 
@@ -17,6 +15,7 @@ def _fake_bet(position, athlete_name):
 
 
 # --- normalize_name ---
+
 
 def test_normalize_name_basic():
     assert normalize_name("John Doe") == "JOHN DOE"
@@ -43,6 +42,7 @@ def test_normalize_name_tabs_and_newlines():
 
 
 # --- score_bet ---
+
 
 def test_score_bet_exact_match():
     bet = _fake_bet(1, "Stefan Kraft")
@@ -76,19 +76,13 @@ def test_score_bet_whitespace_insensitive():
 
 def test_score_bet_all_three_exact():
     podium = {1: "A", 2: "B", 3: "C"}
-    total = sum(
-        score_bet(_fake_bet(pos, name), podium)
-        for pos, name in [(1, "A"), (2, "B"), (3, "C")]
-    )
+    total = sum(score_bet(_fake_bet(pos, name), podium) for pos, name in [(1, "A"), (2, "B"), (3, "C")])
     assert total == 9
 
 
 def test_score_bet_all_three_partial():
     podium = {1: "A", 2: "B", 3: "C"}
-    total = sum(
-        score_bet(_fake_bet(pos, name), podium)
-        for pos, name in [(1, "B"), (2, "C"), (3, "A")]
-    )
+    total = sum(score_bet(_fake_bet(pos, name), podium) for pos, name in [(1, "B"), (2, "C"), (3, "A")])
     assert total == 3
 
 
@@ -101,6 +95,7 @@ def test_score_bet_mixed():
 
 
 # --- score_competition_bets (needs DB) ---
+
 
 def test_score_competition_bets_happy_path(db, make_user, make_competition, make_result, make_bet):
     user = make_user()
@@ -157,6 +152,7 @@ def test_score_competition_bets_ignores_non_podium(db, make_user, make_competiti
 
 
 # --- get_user_total_points (needs DB) ---
+
 
 def test_get_user_total_points_single_competition(db, make_user, make_competition, make_result, make_bet):
     user = make_user()

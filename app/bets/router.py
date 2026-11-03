@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Request, Depends, Form
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models import User, Competition, Bet, Result
 from app.auth.dependencies import get_current_user
 from app.bets.scoring import score_bet
+from app.database import get_db
+from app.models import Bet, Competition, Result, User
 
 router = APIRouter(prefix="/bets", tags=["bets"])
 templates = Jinja2Templates(directory="app/templates")
@@ -29,9 +29,7 @@ def place_bet(
     if not competition or competition.status != "upcoming":
         return RedirectResponse(url="/competitions", status_code=303)
 
-    existing = db.query(Bet).filter(
-        Bet.user_id == user.id, Bet.competition_id == competition_id
-    ).all()
+    existing = db.query(Bet).filter(Bet.user_id == user.id, Bet.competition_id == competition_id).all()
     for bet in existing:
         db.delete(bet)
     if existing:
@@ -40,12 +38,14 @@ def place_bet(
     for position, name in [(1, first), (2, second), (3, third)]:
         name = name.strip()
         if name:
-            db.add(Bet(
-                user_id=user.id,
-                competition_id=competition_id,
-                position=position,
-                athlete_name=name,
-            ))
+            db.add(
+                Bet(
+                    user_id=user.id,
+                    competition_id=competition_id,
+                    position=position,
+                    athlete_name=name,
+                )
+            )
     db.commit()
 
     return RedirectResponse(url=f"/competitions/{competition_id}", status_code=303)
@@ -60,23 +60,14 @@ def my_bets(
     if not user:
         return RedirectResponse(url="/auth/login", status_code=303)
 
-    bets = (
-        db.query(Bet)
-        .filter(Bet.user_id == user.id)
-        .order_by(Bet.created_at.desc())
-        .all()
-    )
+    bets = db.query(Bet).filter(Bet.user_id == user.id).order_by(Bet.created_at.desc()).all()
 
     bet_details = []
     for bet in bets:
         comp = bet.competition
         points = None
         if comp.status == "completed":
-            results = (
-                db.query(Result)
-                .filter(Result.competition_id == comp.id, Result.rank <= 3)
-                .all()
-            )
+            results = db.query(Result).filter(Result.competition_id == comp.id, Result.rank <= 3).all()
             if len(results) >= 3:
                 podium = {r.rank: r.athlete_name for r in results}
                 points = score_bet(bet, podium)
@@ -95,11 +86,5 @@ def athlete_autocomplete(
 ):
     if len(q) < 2:
         return []
-    names = (
-        db.query(Result.athlete_name)
-        .filter(Result.athlete_name.ilike(f"%{q}%"))
-        .distinct()
-        .limit(10)
-        .all()
-    )
+    names = db.query(Result.athlete_name).filter(Result.athlete_name.ilike(f"%{q}%")).distinct().limit(10).all()
     return [n[0] for n in names]

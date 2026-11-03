@@ -1,8 +1,8 @@
-from fastapi import Request, Depends
-from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+from fastapi import Depends, Request
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from sqlalchemy.orm import Session
 
-from app.config import SECRET_KEY, COOKIE_NAME, COOKIE_MAX_AGE
+from app.config import COOKIE_MAX_AGE, COOKIE_NAME, SECRET_KEY
 from app.database import get_db
 from app.models import User
 

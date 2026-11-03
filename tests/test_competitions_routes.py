@@ -1,9 +1,9 @@
-from datetime import date, timedelta
+from datetime import date
 
 
 class TestCompetitionList:
     def test_competitions_list_default_upcoming(self, client, make_competition):
-        c = make_competition(name="Wisla WC", status="upcoming")
+        make_competition(name="Wisla WC", status="upcoming")
         make_competition(name="Oberstdorf WC", status="completed")
         resp = client.get("/competitions")
         assert resp.status_code == 200

@@ -87,16 +87,14 @@ class TestIndex:
         # Top 3 shown; the home page slices [:3]
         assert count <= 5  # all may appear since all have same score, but template shows top_players[:3]
 
-    def test_index_top_players_sorted_descending(
-        self, client, make_user, make_competition, make_result, make_bet
-    ):
+    def test_index_top_players_sorted_descending(self, client, make_user, make_competition, make_result, make_bet):
         comp = make_competition(status="completed")
         make_result(comp.id, 1, "A", "POL")
         make_result(comp.id, 2, "B", "GER")
         make_result(comp.id, 3, "C", "NOR")
         low = make_user(username="lowscore")
         high = make_user(username="highscore")
-        make_bet(low.id, comp.id, 1, "X")   # 0 pts
+        make_bet(low.id, comp.id, 1, "X")  # 0 pts
         make_bet(high.id, comp.id, 1, "A")  # 3 pts
         resp = client.get("/")
         text = resp.text

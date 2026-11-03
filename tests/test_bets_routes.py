@@ -74,9 +74,7 @@ class TestPlaceBet:
             data={"first": "  Kraft  ", "second": "B", "third": "C"},
             follow_redirects=False,
         )
-        bet = db.query(Bet).filter(
-            Bet.user_id == user.id, Bet.competition_id == comp.id, Bet.position == 1
-        ).first()
+        bet = db.query(Bet).filter(Bet.user_id == user.id, Bet.competition_id == comp.id, Bet.position == 1).first()
         assert bet.athlete_name == "Kraft"
 
     def test_place_bet_empty_name_skipped(self, client, make_user, auth_client, make_competition, db):
@@ -166,9 +164,7 @@ class TestMyBets:
         assert resp.status_code == 200
         assert "3" in resp.text
 
-    def test_my_bets_shows_pending_upcoming(
-        self, client, make_user, auth_client, make_competition, make_bet
-    ):
+    def test_my_bets_shows_pending_upcoming(self, client, make_user, auth_client, make_competition, make_bet):
         user = make_user()
         comp = make_competition(status="upcoming")
         make_bet(user.id, comp.id, 1, "Kraft")
@@ -189,9 +185,7 @@ class TestMyBets:
         resp = ac.get("/bets/my")
         assert resp.status_code == 200
 
-    def test_my_bets_ordered_by_created_desc(
-        self, client, make_user, auth_client, make_competition, make_bet
-    ):
+    def test_my_bets_ordered_by_created_desc(self, client, make_user, auth_client, make_competition, make_bet):
         user = make_user()
         c1 = make_competition(name="First Comp")
         c2 = make_competition(name="Second Comp")

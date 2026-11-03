@@ -26,7 +26,7 @@ class TestRanking:
 
     def test_ranking_rank_numbers_assigned(self, client, make_user, make_competition, make_result, make_bet):
         u1 = make_user()
-        u2 = make_user()
+        make_user()
         comp = make_competition(status="completed")
         make_result(comp.id, 1, "A", "POL")
         make_result(comp.id, 2, "B", "GER")
@@ -60,9 +60,7 @@ class TestRanking:
         assert resp.status_code == 200
         assert "rankeduser" in resp.text
 
-    def test_ranking_multiple_competitions(
-        self, client, make_user, make_competition, make_result, make_bet
-    ):
+    def test_ranking_multiple_competitions(self, client, make_user, make_competition, make_result, make_bet):
         user = make_user(username="multicomp")
         c1 = make_competition(status="completed")
         c2 = make_competition(status="completed")

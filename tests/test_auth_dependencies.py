@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 from itsdangerous import URLSafeTimedSerializer
 
 from app.auth.dependencies import create_session_token, get_current_user, serializer
-from app.config import COOKIE_NAME, COOKIE_MAX_AGE
+from app.config import COOKIE_MAX_AGE, COOKIE_NAME
 
 
 def test_create_session_token_returns_string():
@@ -56,6 +56,7 @@ def test_get_current_user_expired_token(db, make_user):
     request.cookies = {COOKIE_NAME: token}
     import time
     import unittest.mock
+
     # Advance time far beyond COOKIE_MAX_AGE to simulate expiry
     future_time = time.time() + COOKIE_MAX_AGE + 3600
     with unittest.mock.patch("itsdangerous.timed.time.time", return_value=future_time):

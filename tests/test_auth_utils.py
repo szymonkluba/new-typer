@@ -35,6 +35,7 @@ def test_hash_password_unicode():
 
 def test_hash_password_very_long():
     import pytest
+
     # bcrypt 4.x rejects passwords > 72 bytes
     with pytest.raises(ValueError, match="72 bytes"):
         hash_password("a" * 100)
