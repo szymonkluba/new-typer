@@ -1,16 +1,16 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, Depends
+from fastapi import Depends, FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from app.database import create_tables, get_db
-from app.models import User, Competition
 from app.auth.dependencies import get_current_user
 from app.auth.router import router as auth_router
-from app.competitions.router import router as competitions_router
 from app.bets.router import router as bets_router
+from app.competitions.router import router as competitions_router
+from app.database import create_tables, get_db
+from app.models import Competition, User
 from app.ranking.router import router as ranking_router
 from app.scraper.scheduler import start_scheduler, stop_scheduler
 
@@ -56,11 +56,7 @@ def index(
 
     podiums: dict[int, dict[int, str]] = {}
     for comp in completed_comps:
-        results = (
-            db.query(Result)
-            .filter(Result.competition_id == comp.id, Result.rank <= 3)
-            .all()
-        )
+        results = db.query(Result).filter(Result.competition_id == comp.id, Result.rank <= 3).all()
         if len(results) >= 3:
             podiums[comp.id] = {r.rank: r.athlete_name for r in results}
 

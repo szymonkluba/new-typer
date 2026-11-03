@@ -23,11 +23,7 @@ def score_bet(bet: Bet, podium: dict[int, str]) -> int:
 
 def score_competition_bets(db: Session, competition_id: int) -> dict[int, int]:
     """Score all bets for a competition. Returns {user_id: total_points}."""
-    results = (
-        db.query(Result)
-        .filter(Result.competition_id == competition_id, Result.rank <= 3)
-        .all()
-    )
+    results = db.query(Result).filter(Result.competition_id == competition_id, Result.rank <= 3).all()
     if len(results) < 3:
         return {}
 
@@ -46,28 +42,16 @@ def get_user_total_points(db: Session, user_id: int) -> int:
     """Calculate total points for a user across all completed competitions."""
     from app.models import Competition
 
-    completed = (
-        db.query(Competition)
-        .filter(Competition.status == "completed")
-        .all()
-    )
+    completed = db.query(Competition).filter(Competition.status == "completed").all()
 
     total = 0
     for comp in completed:
-        results = (
-            db.query(Result)
-            .filter(Result.competition_id == comp.id, Result.rank <= 3)
-            .all()
-        )
+        results = db.query(Result).filter(Result.competition_id == comp.id, Result.rank <= 3).all()
         if len(results) < 3:
             continue
         podium = {r.rank: r.athlete_name for r in results}
 
-        bets = (
-            db.query(Bet)
-            .filter(Bet.user_id == user_id, Bet.competition_id == comp.id)
-            .all()
-        )
+        bets = db.query(Bet).filter(Bet.user_id == user_id, Bet.competition_id == comp.id).all()
         for bet in bets:
             total += score_bet(bet, podium)
 

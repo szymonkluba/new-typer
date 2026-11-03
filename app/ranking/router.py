@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models import User, Bet, Result, Competition
 from app.auth.dependencies import get_current_user
 from app.bets.scoring import score_bet
+from app.database import get_db
+from app.models import Bet, Competition, Result, User
 
 router = APIRouter(prefix="/ranking", tags=["ranking"])
 templates = Jinja2Templates(directory="app/templates")
@@ -19,17 +19,11 @@ def leaderboard(
 ):
     users = db.query(User).all()
 
-    completed_comps = (
-        db.query(Competition).filter(Competition.status == "completed").all()
-    )
+    completed_comps = db.query(Competition).filter(Competition.status == "completed").all()
 
     podiums: dict[int, dict[int, str]] = {}
     for comp in completed_comps:
-        results = (
-            db.query(Result)
-            .filter(Result.competition_id == comp.id, Result.rank <= 3)
-            .all()
-        )
+        results = db.query(Result).filter(Result.competition_id == comp.id, Result.rank <= 3).all()
         if len(results) >= 3:
             podiums[comp.id] = {r.rank: r.athlete_name for r in results}
 
