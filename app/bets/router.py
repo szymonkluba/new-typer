@@ -34,6 +34,8 @@ def place_bet(
     ).all()
     for bet in existing:
         db.delete(bet)
+    if existing:
+        db.flush()
 
     for position, name in [(1, first), (2, second), (3, third)]:
         name = name.strip()
