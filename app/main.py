@@ -42,7 +42,7 @@ def index(
 ):
     upcoming = (
         db.query(Competition)
-        .filter(Competition.status == "upcoming")
+        .filter(Competition.status == "upcoming", Competition.category == "WC", Competition.gender == "M")
         .order_by(Competition.date)
         .limit(5)
         .all()

@@ -17,7 +17,9 @@ def competition_list(
     user: User | None = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Competition)
+    query = db.query(Competition).filter(
+        Competition.category == "WC", Competition.gender == "M"
+    )
     if status != "all":
         query = query.filter(Competition.status == status)
     competitions = query.order_by(Competition.date.desc()).all()

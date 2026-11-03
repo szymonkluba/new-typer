@@ -102,6 +102,9 @@ def _parse_calendar_row(row, db: Session):
         if line_upper.strip() in ("W", "WOMEN"):
             gender = "W"
 
+    if category != "WC" or gender != "M":
+        return
+
     try:
         comp_date = _parse_fis_date(date_text)
     except (ValueError, IndexError):
