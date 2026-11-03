@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h1>Typer</h1>
+    <p>Bet on ski jumping podiums and compete with your friends!</p>
+    {% if not user %}
+        <a href="/auth/register" class="btn btn-primary btn-lg">Join Now</a>
+    {% endif %}
+</section>
+
+{% if top_players %}
+<section class="card">
+    <h2>Top Players</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Player</th>
+                <th>Points</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in top_players %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ p.user.username }}</td>
+                <td><strong>{{ p.points }}</strong></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endif %}
+
+{% if upcoming %}
+<section class="card">
+    <h2>Upcoming Competitions</h2>
+    <div class="competition-list">
+        {% for comp in upcoming %}
+        <a href="/competitions/{{ comp.id }}" class="competition-row">
+            <span class="comp-date">{{ comp.date.strftime('%d %b %Y') }}</span>
+            <span class="comp-venue">{{ comp.venue }}</span>
+            <span class="comp-name">{{ comp.name }}</span>
+            <span class="badge badge-{{ comp.category | lower }}">{{ comp.category }}</span>
+        </a>
+        {% endfor %}
+    </div>
+    <a href="/competitions" class="link">View all competitions &rarr;</a>
+</section>
+{% else %}
+<section class="card">
+    <h2>No Upcoming Competitions</h2>
+    <p>Check back later or wait for the scraper to fetch new events from FIS.</p>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}{{ competition.name }}{% endblock %}
+
+{% block content %}
+<section class="card">
+    <div class="comp-header">
+        <h2>{{ competition.name }}</h2>
+        <div class="comp-meta">
+            <span>{{ competition.venue }}</span>
+            <span>{{ competition.date.strftime('%d %b %Y') }}</span>
+            <span class="badge badge-{{ competition.category | lower }}">{{ competition.category }}</span>
+            <span class="badge badge-{{ competition.status }}">{{ competition.status }}</span>
+        </div>
+    </div>
+</section>
+
+{% if competition.status == 'upcoming' and user %}
+<section class="card">
+    <h3>Place Your Bet</h3>
+    <form method="post" action="/bets/place/{{ competition.id }}">
+        <div class="form-group">
+            <label for="first">1st Place</label>
+            <input type="text" id="first" name="first" placeholder="Athlete name"
+                   value="{{ user_bets[0].athlete_name if user_bets|length > 0 else '' }}"
+                   required autocomplete="off"
+                   hx-get="/bets/athletes" hx-trigger="keyup changed delay:300ms"
+                   hx-target="#suggestions-1" hx-vals='{"q": this.value}'>
+            <div id="suggestions-1" class="suggestions"></div>
+        </div>
+        <div class="form-group">
+            <label for="second">2nd Place</label>
+            <input type="text" id="second" name="second" placeholder="Athlete name"
+                   value="{{ user_bets[1].athlete_name if user_bets|length > 1 else '' }}"
+                   required autocomplete="off"
+                   hx-get="/bets/athletes" hx-trigger="keyup changed delay:300ms"
+                   hx-target="#suggestions-2" hx-vals='{"q": this.value}'>
+            <div id="suggestions-2" class="suggestions"></div>
+        </div>
+        <div class="form-group">
+            <label for="third">3rd Place</label>
+            <input type="text" id="third" name="third" placeholder="Athlete name"
+                   value="{{ user_bets[2].athlete_name if user_bets|length > 2 else '' }}"
+                   required autocomplete="off"
+                   hx-get="/bets/athletes" hx-trigger="keyup changed delay:300ms"
+                   hx-target="#suggestions-3" hx-vals='{"q": this.value}'>
+            <div id="suggestions-3" class="suggestions"></div>
+        </div>
+        <button type="submit" class="btn btn-primary">
+            {{ "Update Bet" if user_bets else "Place Bet" }}
+        </button>
+    </form>
+</section>
+{% elif competition.status == 'upcoming' and not user %}
+<section class="card">
+    <p><a href="/auth/login">Login</a> to place your bet!</p>
+</section>
+{% endif %}
+
+{% if user_bets and competition.status == 'upcoming' %}
+<section class="card">
+    <h3>Your Current Bet</h3>
+    <ol>
+        {% for bet in user_bets %}
+        <li>{{ bet.athlete_name }}</li>
+        {% endfor %}
+    </ol>
+</section>
+{% endif %}
+
+{% if results %}
+<section class="card">
+    <h3>Results</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Athlete</th>
+                <th>Nation</th>
+                <th>Points</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in results %}
+            <tr class="{% if r.rank <= 3 %}podium-{{ r.rank }}{% endif %}">
+                <td>{{ r.rank }}</td>
+                <td>{{ r.athlete_name }}</td>
+                <td>{{ r.nation }}</td>
+                <td>{{ r.total_points if r.total_points else '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endif %}
+{% endblock %}

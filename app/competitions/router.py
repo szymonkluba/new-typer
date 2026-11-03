@@ -1,0 +1,71 @@
+from fastapi import APIRouter, Request, Depends, Query
+from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models import Competition, Result, User
+from app.auth.dependencies import get_current_user
+
+router = APIRouter(prefix="/competitions", tags=["competitions"])
+templates = Jinja2Templates(directory="app/templates")
+
+
+@router.get("")
+def competition_list(
+    request: Request,
+    status: str = Query("upcoming", pattern="^(upcoming|completed|all)$"),
+    user: User | None = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    query = db.query(Competition)
+    if status != "all":
+        query = query.filter(Competition.status == status)
+    competitions = query.order_by(Competition.date.desc()).all()
+    return templates.TemplateResponse(
+        "competitions/list.html",
+        {"request": request, "user": user, "competitions": competitions, "status": status},
+    )
+
+
+@router.get("/{competition_id}")
+def competition_detail(
+    competition_id: int,
+    request: Request,
+    user: User | None = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    competition = db.query(Competition).filter(Competition.id == competition_id).first()
+    if not competition:
+        return templates.TemplateResponse(
+            "error.html",
+            {"request": request, "user": user, "message": "Competition not found."},
+            status_code=404,
+        )
+
+    results = (
+        db.query(Result)
+        .filter(Result.competition_id == competition_id)
+        .order_by(Result.rank)
+        .all()
+    )
+
+    user_bets = []
+    if user:
+        from app.models import Bet
+        user_bets = (
+            db.query(Bet)
+            .filter(Bet.user_id == user.id, Bet.competition_id == competition_id)
+            .order_by(Bet.position)
+            .all()
+        )
+
+    return templates.TemplateResponse(
+        "competitions/detail.html",
+        {
+            "request": request,
+            "user": user,
+            "competition": competition,
+            "results": results,
+            "user_bets": user_bets,
+        },
+    )
