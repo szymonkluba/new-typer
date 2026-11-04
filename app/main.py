@@ -34,6 +34,11 @@ app.include_router(bets_router)
 app.include_router(ranking_router)
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.get("/")
 def index(
     request: Request,
