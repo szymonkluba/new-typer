@@ -2,10 +2,11 @@
 
 - **Domain:** skijtyper.pl
 - **VM IP:** 158.180.16.100
+- **OS:** Oracle Linux (default user: `opc`)
 
 ## Prerequisites
 
-- OCI Ubuntu VM (free tier works)
+- OCI VM (free tier works)
 - SSH access to the VM
 - Git repository accessible from the VM
 - Domain DNS A record pointing to the VM IP
@@ -15,16 +16,19 @@
 ### 1. Install Docker
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y docker.io docker-compose-plugin
-sudo usermod -aG docker ubuntu
+sudo dnf install -y dnf-utils
+sudo dnf config-manager --add-repo https://download.docker.com/linux/oracle/docker-ce.repo
+sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+sudo systemctl enable --now docker
+sudo usermod -aG docker opc
 # Log out and back in for group change to take effect
 ```
 
 ### 2. Install nginx and certbot
 
 ```bash
-sudo apt-get install -y nginx certbot python3-certbot-nginx
+sudo dnf install -y nginx certbot python3-certbot-nginx
+sudo systemctl enable nginx
 ```
 
 ### 3. Configure DNS
@@ -47,18 +51,26 @@ OCI VMs have two layers of firewall — both must allow ports 80 and 443.
   - Source `0.0.0.0/0`, Protocol TCP, Destination Port `80`
   - Source `0.0.0.0/0`, Protocol TCP, Destination Port `443`
 
-**iptables (VM level):**
+**firewalld (VM level):**
 
 ```bash
-sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
-sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
-sudo netfilter-persistent save
+sudo firewall-cmd --permanent --add-service=http
+sudo firewall-cmd --permanent --add-service=https
+sudo firewall-cmd --reload
+```
+
+If firewalld is not running, use iptables instead:
+
+```bash
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 80 -j ACCEPT
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 443 -j ACCEPT
+sudo sh -c 'iptables-save > /etc/sysconfig/iptables'
 ```
 
 ### 5. Clone the repo and configure
 
 ```bash
-cd /home/ubuntu
+cd /home/opc
 git clone <your-repo-url> typer
 cd typer
 cp .env.example .env
@@ -77,7 +89,7 @@ nano .env
 First, set up a temporary nginx config so certbot can verify domain ownership:
 
 ```bash
-sudo tee /etc/nginx/sites-available/typer <<'CONF'
+sudo tee /etc/nginx/conf.d/typer.conf <<'CONF'
 server {
     listen 80;
     server_name skijtyper.pl;
@@ -94,9 +106,7 @@ server {
 CONF
 
 sudo mkdir -p /var/www/certbot
-sudo ln -sf /etc/nginx/sites-available/typer /etc/nginx/sites-enabled/typer
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t && sudo systemctl reload nginx
+sudo nginx -t && sudo systemctl start nginx
 ```
 
 Now obtain the certificate:
@@ -107,8 +117,10 @@ sudo certbot certonly --webroot -w /var/www/certbot -d skijtyper.pl
 
 ### 7. Install the full nginx config
 
+Oracle Linux uses `/etc/nginx/conf.d/` (no `sites-available`/`sites-enabled`):
+
 ```bash
-sudo cp nginx/nginx.conf /etc/nginx/sites-available/typer
+sudo cp nginx/nginx.conf /etc/nginx/conf.d/typer.conf
 sudo nginx -t
 sudo systemctl reload nginx
 ```
@@ -133,7 +145,7 @@ The app should now be accessible at `https://skijtyper.pl`.
 SSH into the VM and run:
 
 ```bash
-cd /home/ubuntu/typer
+cd /home/opc/typer
 ./deploy.sh
 ```
 
@@ -175,12 +187,20 @@ curl -v http://localhost:8000/health
 
 **Ports not reachable from outside:**
 - Check OCI Security List has port 80 + 443 ingress rules
-- Check iptables: `sudo iptables -L INPUT -n --line-numbers`
+- Check firewalld: `sudo firewall-cmd --list-all`
 - Check nginx is running: `sudo systemctl status nginx`
 
 **SSL certificate renewal:**
 ```bash
 sudo certbot renew --dry-run
+```
+
+**SELinux blocking nginx proxy:**
+
+Oracle Linux has SELinux enabled by default. If nginx returns 502 errors:
+
+```bash
+sudo setsebool -P httpd_can_network_connect 1
 ```
 
 **Database reset (if needed):**

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DIR="/home/ubuntu/typer"
+APP_DIR="/home/opc/typer"
 cd "$APP_DIR"
 
 echo "Pulling latest code..."
