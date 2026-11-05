@@ -10,7 +10,7 @@
     <table class="table">
         <thead>
             <tr>
-                <th>#</th>
+                <th>Rank</th>
                 <th>Player</th>
                 <th>Points</th>
             </tr>
@@ -18,9 +18,15 @@
         <tbody>
             {% for r in rankings %}
             <tr class="{% if r.rank <= 3 %}podium-{{ r.rank }}{% endif %}">
-                <td>{{ r.rank }}</td>
+                <td>
+                    {% if r.rank <= 3 %}
+                        <span class="rank-badge rank-{{ r.rank }}">{{ r.rank }}</span>
+                    {% else %}
+                        <span class="rank-default">{{ r.rank }}</span>
+                    {% endif %}
+                </td>
                 <td>{{ r.user.username }}</td>
-                <td><strong>{{ r.points }}</strong></td>
+                <td><strong class="points">{{ r.points }}</strong></td>
             </tr>
             {% endfor %}
         </tbody>

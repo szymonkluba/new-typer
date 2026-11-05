@@ -22,11 +22,13 @@
             <tr>
                 <td><a href="/competitions/{{ bd.competition.id }}">{{ bd.competition.name }}</a></td>
                 <td>{{ bd.competition.date.strftime('%d %b %Y') }}</td>
-                <td>{{ bd.bet.position }}</td>
+                <td>
+                    <span class="position-badge position-badge-{{ bd.bet.position }}">{{ bd.bet.position }}</span>
+                </td>
                 <td>{{ bd.bet.athlete_name }}</td>
                 <td>
                     {% if bd.points is not none %}
-                        <span class="points points-{{ bd.points }}">{{ bd.points }}</span>
+                        <span class="points points-{{ bd.points }} points-pill">{{ bd.points }}</span>
                     {% else %}
                         <span class="pending">Pending</span>
                     {% endif %}

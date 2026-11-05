@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f1923">
     <title>{% block title %}Typer{% endblock %} - Ski Jumping Bets</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 </head>
@@ -11,6 +15,8 @@
     <nav class="navbar">
         <div class="container">
             <a href="/" class="logo">Typer</a>
+            <input type="checkbox" id="nav-toggle" class="nav-toggle">
+            <label for="nav-toggle" class="nav-toggle-label"><span></span></label>
             <div class="nav-links">
                 <a href="/competitions">Competitions</a>
                 <a href="/ranking">Ranking</a>

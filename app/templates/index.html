@@ -4,8 +4,8 @@
 
 {% block content %}
 <section class="hero">
-    <h1>Typer</h1>
-    <p>Bet on ski jumping podiums and compete with your friends!</p>
+    <h1><span>Typer</span></h1>
+    <p>Predict ski jumping podiums and compete with your friends!</p>
     {% if not user %}
         <a href="/auth/register" class="btn btn-primary btn-lg">Join Now</a>
     {% endif %}
@@ -17,17 +17,19 @@
     <table class="table">
         <thead>
             <tr>
-                <th>#</th>
+                <th>Rank</th>
                 <th>Player</th>
                 <th>Points</th>
             </tr>
         </thead>
         <tbody>
             {% for p in top_players %}
-            <tr>
-                <td>{{ loop.index }}</td>
+            <tr class="podium-{{ loop.index }}">
+                <td>
+                    <span class="rank-badge rank-{{ loop.index }}">{{ loop.index }}</span>
+                </td>
                 <td>{{ p.user.username }}</td>
-                <td><strong>{{ p.points }}</strong></td>
+                <td><strong class="points">{{ p.points }}</strong></td>
             </tr>
             {% endfor %}
         </tbody>
@@ -45,6 +47,7 @@
             <span class="comp-venue">{{ comp.venue }}</span>
             <span class="comp-name">{{ comp.name }}</span>
             <span class="badge badge-{{ comp.category | lower }}">{{ comp.category }}</span>
+            <span class="comp-arrow">&rsaquo;</span>
         </a>
         {% endfor %}
     </div>

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -79,12 +79,18 @@ def my_bets(
     )
 
 
-@router.get("/athletes")
+@router.get("/athletes", response_class=HTMLResponse)
 def athlete_autocomplete(
     q: str = "",
     db: Session = Depends(get_db),
 ):
     if len(q) < 2:
-        return []
+        return ""
     names = db.query(Result.athlete_name).filter(Result.athlete_name.ilike(f"%{q}%")).distinct().limit(10).all()
-    return [n[0] for n in names]
+    html = "".join(
+        f'<a href="#" onclick="event.preventDefault();'
+        f"this.closest('.form-group').querySelector('input').value='{n[0].replace(chr(39), chr(92)+chr(39))}';"
+        f"this.parentElement.innerHTML=''\">{n[0]}</a>"
+        for n in names
+    )
+    return html
