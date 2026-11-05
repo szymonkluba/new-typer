@@ -10,7 +10,7 @@ from app.auth.dependencies import get_current_user
 from app.auth.router import router as auth_router
 from app.bets.router import router as bets_router
 from app.competitions.router import router as competitions_router
-from app.database import SessionLocal, create_tables, get_db
+from app.database import create_tables, get_db
 from app.i18n import DEFAULT_LANG, SUPPORTED_LANGS
 from app.models import Competition, User
 from app.ranking.router import router as ranking_router
@@ -27,35 +27,9 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_tables()
-    _cleanup_bad_competitions()
     start_scheduler()
     yield
     stop_scheduler()
-
-
-def _cleanup_bad_competitions():
-    from app.models import Competition
-
-    db = SessionLocal()
-    try:
-        bad = db.query(Competition).filter(
-            Competition.venue.in_(["P", "D", "C"])
-        ).all()
-        for c in bad:
-            logger.info("Removing malformed competition: id=%d name=%s venue=%s", c.id, c.name, c.venue)
-            db.delete(c)
-        wrong_type = db.query(Competition).filter(
-            Competition.type == "team", Competition.name.like("%WC%")
-        ).all()
-        for c in wrong_type:
-            logger.info("Fixing type for competition: id=%d name=%s", c.id, c.name)
-            c.type = "individual"
-        if bad or wrong_type:
-            db.commit()
-    except Exception:
-        logger.exception("Cleanup failed")
-    finally:
-        db.close()
 
 
 app = FastAPI(title="Typer - Ski Jumping Prediction Market", lifespan=lifespan)
