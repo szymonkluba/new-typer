@@ -17,7 +17,6 @@ from app.ranking.router import router as ranking_router
 from app.scraper.scheduler import start_scheduler, stop_scheduler
 from app.templating import current_lang, templates
 
-
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 
 
