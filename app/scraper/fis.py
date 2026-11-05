@@ -72,17 +72,10 @@ def _scrape_calendar(db: Session):
 
 
 def _parse_calendar_row(row, db: Session):
-    cells = row.query_selector_all(".g-xs-4, .g-xs-5, .g-xs-6, .g-xs-8, .g-xs-10, .g-xs-12, [class*='g-']")
-    if not cells:
+    link = row.query_selector("a[href*='eventid']")
+    if not link:
         return
-
-    text = row.inner_text()
-    lines = [l.strip() for l in text.split("\n") if l.strip()]
-    if len(lines) < 3:
-        return
-
-    link = row.query_selector("a")
-    href = link.get_attribute("href") if link else None
+    href = link.get_attribute("href")
     fis_event_id = None
     if href and "eventid=" in href:
         try:
@@ -90,32 +83,61 @@ def _parse_calendar_row(row, db: Session):
         except (ValueError, IndexError):
             pass
 
-    existing = None
     if fis_event_id:
         existing = db.query(Competition).filter(Competition.fis_event_id == fis_event_id).first()
+        if existing:
+            return
 
-    if existing:
-        return
+    text = row.inner_text()
+    lines = [l.strip() for l in text.split("\n") if l.strip()]
 
-    date_text = lines[0]
-    venue = lines[1] if len(lines) > 1 else "Unknown"
+    # FIS row structure: [status letters..., date, venue, nation, category, event_type, discipline, gender...]
+    # Status letters are single chars like D/P/C, skip them to find the date
+    date_text = ""
+    venue = "Unknown"
+    data_lines = [l for l in lines if len(l) > 1 or not l.isalpha()]
+    for line in data_lines:
+        if any(month in line for month in ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]):
+            date_text = line
+            break
+
+    # Venue: the element with class containing g-lg-7 and hidden-sm-down
+    venue_el = row.query_selector(".g-lg-7.hidden-sm-down .split-row__item")
+    if not venue_el:
+        venue_el = row.query_selector(".g-lg-7.hidden-sm-down")
+    if venue_el:
+        venue = venue_el.inner_text().strip()
+
+    # Category and event type from the category cell
+    cat_el = row.query_selector(".g-lg-7.g-sm-6")
     category = "WC"
     comp_type = "individual"
-    gender = "M"
-
-    for line in lines:
-        line_upper = line.upper()
-        if "TEAM" in line_upper:
+    if cat_el:
+        cat_text = cat_el.inner_text().upper()
+        if "TEAM" in cat_text or " TE" in cat_text:
             comp_type = "team"
-        if any(cat in line_upper for cat in ["GP", "COC", "WC", "QUA"]):
-            for cat in ["WC", "GP", "COC", "QUA"]:
-                if cat in line_upper:
-                    category = cat
-                    break
-        if line_upper.strip() in ("W", "WOMEN"):
-            gender = "W"
+        for cat in ["WC", "GP", "COC", "QUA"]:
+            if cat in cat_text:
+                category = cat
+                break
 
-    if category != "WC" or gender != "M":
+    # Gender: check the last single-letter lines
+    gender = "M"
+    for line in reversed(lines):
+        if line.strip().upper() in ("W", "M"):
+            gender = line.strip().upper()
+            break
+
+    # For events with both M and W, check if M is present
+    has_m = any(l.strip().upper() == "M" for l in lines)
+    has_w = any(l.strip().upper() == "W" for l in lines)
+    if has_w and not has_m:
+        gender = "W"
+    elif has_m:
+        gender = "M"
+
+    if category not in ("WC",) or gender != "M":
         return
 
     try:
@@ -123,8 +145,7 @@ def _parse_calendar_row(row, db: Session):
     except (ValueError, IndexError):
         comp_date = date.today()
 
-    name_parts = [p for p in lines[2:] if p and len(p) > 2]
-    name = name_parts[0] if name_parts else f"Ski Jumping - {venue}"
+    name = f"Ski Jumping {category} - {venue}"
 
     comp = Competition(
         fis_event_id=fis_event_id,
@@ -137,10 +158,16 @@ def _parse_calendar_row(row, db: Session):
         status="upcoming",
     )
     db.add(comp)
+    logger.info("Added competition: %s (%s, %s)", name, venue, comp_date)
 
 
 def _parse_fis_date(text: str) -> date:
     text = text.strip()
+    # Handle date ranges like "20-22 Nov" — take the first day
+    if "-" in text.split(" ")[0]:
+        first_day = text.split("-")[0].strip()
+        rest = text.split(" ", 1)[1] if " " in text else ""
+        text = f"{first_day} {rest}".strip()
     for fmt in ("%d %b %Y", "%d %B %Y", "%b %d, %Y", "%d.%m.%Y"):
         try:
             return datetime.strptime(text, fmt).date()
