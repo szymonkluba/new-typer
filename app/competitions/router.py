@@ -62,5 +62,6 @@ def competition_detail(
             "competition": competition,
             "results": results,
             "user_bets": user_bets,
+            "betting_open": competition.betting_open,
         },
     )

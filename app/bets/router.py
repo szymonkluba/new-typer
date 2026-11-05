@@ -27,7 +27,7 @@ def place_bet(
         return RedirectResponse(url="/auth/login", status_code=303)
 
     competition = db.query(Competition).filter(Competition.id == competition_id).first()
-    if not competition or competition.status != "upcoming":
+    if not competition or not competition.betting_open:
         return RedirectResponse(url="/competitions", status_code=303)
 
     existing = db.query(Bet).filter(Bet.user_id == user.id, Bet.competition_id == competition_id).all()

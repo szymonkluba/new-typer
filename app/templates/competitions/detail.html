@@ -15,7 +15,7 @@
     </div>
 </section>
 
-{% if competition.status == 'upcoming' and user %}
+{% if betting_open and user %}
 <section class="card">
     <h3>{{ _("place_your_bet") }}</h3>
     <form method="post" action="/bets/place/{{ competition.id }}">
@@ -66,13 +66,17 @@
         </button>
     </form>
 </section>
-{% elif competition.status == 'upcoming' and not user %}
+{% elif betting_open and not user %}
 <section class="card">
     <p><a href="/auth/login">{{ _("btn_login") }}</a> {{ _("login_to_bet") }}</p>
 </section>
+{% elif competition.status == 'upcoming' and not betting_open %}
+<section class="card">
+    <p>{{ _("betting_closed") }}</p>
+</section>
 {% endif %}
 
-{% if user_bets and competition.status == 'upcoming' %}
+{% if user_bets and betting_open %}
 <section class="card">
     <h3>{{ _("your_current_bet") }}</h3>
     <div class="bet-display">

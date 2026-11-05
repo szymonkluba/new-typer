@@ -1,3 +1,6 @@
+from datetime import date, timedelta
+from unittest.mock import patch
+
 from app.models import Bet
 
 
@@ -48,6 +51,45 @@ class TestPlaceBet:
         )
         assert resp.status_code == 303
         assert "/competitions" in resp.headers["location"]
+
+    def test_place_bet_blocked_past_date(self, client, make_user, auth_client, make_competition):
+        user = make_user()
+        comp = make_competition(status="upcoming", comp_date=date.today() - timedelta(days=1))
+        ac = auth_client(user)
+        resp = ac.post(
+            f"/bets/place/{comp.id}",
+            data={"first": "A", "second": "B", "third": "C"},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        assert "/competitions" in resp.headers["location"]
+
+    def test_place_bet_blocked_after_cutoff(self, client, make_user, auth_client, make_competition):
+        user = make_user()
+        comp = make_competition(status="upcoming", comp_date=date.today())
+        ac = auth_client(user)
+        with patch("app.config.BET_CUTOFF_HOUR", 0):
+            resp = ac.post(
+                f"/bets/place/{comp.id}",
+                data={"first": "A", "second": "B", "third": "C"},
+                follow_redirects=False,
+            )
+        assert resp.status_code == 303
+        assert "/competitions" in resp.headers["location"]
+
+    def test_place_bet_allowed_before_cutoff(self, client, make_user, auth_client, make_competition, db):
+        user = make_user()
+        comp = make_competition(status="upcoming", comp_date=date.today() + timedelta(days=1))
+        ac = auth_client(user)
+        resp = ac.post(
+            f"/bets/place/{comp.id}",
+            data={"first": "A", "second": "B", "third": "C"},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        assert f"/competitions/{comp.id}" in resp.headers["location"]
+        bets = db.query(Bet).filter(Bet.user_id == user.id, Bet.competition_id == comp.id).all()
+        assert len(bets) == 3
 
     def test_place_bet_replaces_existing(self, client, make_user, auth_client, make_competition, make_bet, db):
         user = make_user()

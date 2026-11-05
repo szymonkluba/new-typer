@@ -11,3 +11,6 @@ FIS_RESULTS_URL = "https://www.fis-ski.com/DB/general/results.html"
 
 SCRAPER_COMPETITIONS_CRON_HOUR = int(os.getenv("SCRAPER_COMPETITIONS_CRON_HOUR", "6"))
 SCRAPER_RESULTS_INTERVAL_HOURS = int(os.getenv("SCRAPER_RESULTS_INTERVAL_HOURS", "2"))
+
+TIMEZONE = os.getenv("TIMEZONE", "Europe/Warsaw")
+BET_CUTOFF_HOUR = int(os.getenv("BET_CUTOFF_HOUR", "16"))

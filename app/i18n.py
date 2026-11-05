@@ -97,6 +97,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "btn_update_bet": "Zmień typ",
         "login_to_bet": "aby postawić typ!",
         "your_current_bet": "Twój aktualny typ",
+        "betting_closed": "Typowanie zamknięte — konkurs już się rozpoczął.",
         "results": "Wyniki",
         # My bets
         "title_my_bets": "Moje Typy",
@@ -173,6 +174,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "btn_update_bet": "Update Bet",
         "login_to_bet": "to place your bet!",
         "your_current_bet": "Your Current Bet",
+        "betting_closed": "Betting closed — the competition has started.",
         "results": "Results",
         # My bets
         "title_my_bets": "My Bets",

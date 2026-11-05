@@ -1,4 +1,5 @@
-from datetime import datetime
+import zoneinfo
+from datetime import datetime, time
 
 from sqlalchemy import (
     Column,
@@ -9,6 +10,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Time,
     UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
@@ -36,6 +38,7 @@ class Competition(Base):
     name = Column(String(200), nullable=False)
     venue = Column(String(200), nullable=False)
     date = Column(Date, nullable=False)
+    start_time = Column(Time, nullable=True)
     category = Column(String(20), default="WC")
     type = Column(String(20), default="individual")
     gender = Column(String(5), default="M")
@@ -43,6 +46,18 @@ class Competition(Base):
 
     results = relationship("Result", back_populates="competition", cascade="all, delete-orphan")
     bets = relationship("Bet", back_populates="competition", cascade="all, delete-orphan")
+
+    @property
+    def betting_open(self) -> bool:
+        if self.status != "upcoming":
+            return False
+        from app.config import BET_CUTOFF_HOUR, TIMEZONE
+
+        tz = zoneinfo.ZoneInfo(TIMEZONE)
+        now = datetime.now(tz)
+        cutoff_time = self.start_time if self.start_time else time(BET_CUTOFF_HOUR)
+        cutoff = datetime.combine(self.date, cutoff_time, tzinfo=tz)
+        return now < cutoff
 
 
 class Result(Base):
