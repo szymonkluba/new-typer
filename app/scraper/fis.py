@@ -115,7 +115,7 @@ def _parse_calendar_row(row, db: Session):
     comp_type = "individual"
     if cat_el:
         cat_text = cat_el.inner_text().upper()
-        if "TEAM" in cat_text or " TE" in cat_text:
+        if "TEAM" in cat_text and "IND" not in cat_text:
             comp_type = "team"
         for cat in ["WC", "GP", "COC", "QUA"]:
             if cat in cat_text:
