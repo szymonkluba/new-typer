@@ -1,0 +1,23 @@
+# OCI Authentication
+# Find these in the OCI Console under Profile > My Profile > API Keys
+tenancy_ocid    = "ocid1.tenancy.oc1..aaaaaaaaexample"
+user_ocid       = "ocid1.user.oc1..aaaaaaaaexample"
+fingerprint     = "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
+private_key_path = "~/.oci/oci_api_key.pem"
+
+# Region — must be your home region for Always Free resources
+# List: https://docs.oracle.com/en-us/iaas/Content/General/Concepts/regions.htm
+region = "eu-frankfurt-1"
+
+# Compartment — use tenancy root or a sub-compartment
+# Find in OCI Console > Identity > Compartments
+compartment_id = "ocid1.compartment.oc1..aaaaaaaaexample"
+
+# SSH key for VM access
+ssh_public_key_path = "~/.ssh/id_rsa.pub"
+
+# Instance sizing (Always Free tier limits: 2 OCPUs, 12 GB RAM total)
+# instance_shape            = "VM.Standard.A1.Flex"
+# instance_ocpus            = 1
+# instance_memory_in_gbs    = 6
+# boot_volume_size_in_gbs   = 50

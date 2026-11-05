@@ -1,0 +1,59 @@
+#cloud-config
+
+package_update: true
+
+packages:
+  - dnf-utils
+  - nginx
+  - certbot
+  - python3-certbot-nginx
+  - git
+
+runcmd:
+  # Install Docker CE
+  - dnf config-manager --add-repo https://download.docker.com/linux/oracle/docker-ce.repo
+  - dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+  # Enable and start Docker
+  - systemctl enable --now docker
+
+  # Add opc user to docker group
+  - usermod -aG docker opc
+
+  # Configure firewalld
+  - firewall-cmd --permanent --add-service=http
+  - firewall-cmd --permanent --add-service=https
+  - firewall-cmd --reload
+
+  # SELinux — allow nginx to proxy to upstream
+  - setsebool -P httpd_can_network_connect 1
+
+  # Create certbot webroot
+  - mkdir -p /var/www/certbot
+
+  # Write minimal nginx config for certbot bootstrap
+  - |
+    cat > /etc/nginx/conf.d/typer.conf << 'NGINX'
+    server {
+        listen 80;
+        server_name skijtyper.pl;
+
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
+
+        location / {
+            return 200 'Typer is being set up...';
+            add_header Content-Type text/plain;
+        }
+    }
+    NGINX
+
+  # Enable and start nginx
+  - nginx -t && systemctl enable --now nginx
+
+  # Prepare app directory
+  - mkdir -p /home/opc/typer
+  - chown opc:opc /home/opc/typer
+
+final_message: "Cloud-init completed in $UPTIME seconds. VM is ready for app deployment."
