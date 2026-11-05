@@ -39,12 +39,18 @@ def _cleanup_bad_competitions():
     db = SessionLocal()
     try:
         bad = db.query(Competition).filter(
-            (Competition.venue.in_(["P", "D", "C"])) | (Competition.name.like("%-%Nov%"))
+            Competition.venue.in_(["P", "D", "C"])
         ).all()
         for c in bad:
             logger.info("Removing malformed competition: id=%d name=%s venue=%s", c.id, c.name, c.venue)
             db.delete(c)
-        if bad:
+        wrong_type = db.query(Competition).filter(
+            Competition.type == "team", Competition.name.like("%WC%")
+        ).all()
+        for c in wrong_type:
+            logger.info("Fixing type for competition: id=%d name=%s", c.id, c.name)
+            c.type = "individual"
+        if bad or wrong_type:
             db.commit()
     except Exception:
         logger.exception("Cleanup failed")
