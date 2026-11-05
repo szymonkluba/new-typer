@@ -35,13 +35,30 @@ def _scrape_calendar(db: Session):
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        page.goto(FIS_CALENDAR_URL, wait_until="networkidle", timeout=30000)
+        browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
+        context = browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            ),
+            viewport={"width": 1280, "height": 800},
+        )
+        page = context.new_page()
+        page.goto(FIS_CALENDAR_URL, wait_until="domcontentloaded", timeout=60000)
 
-        page.wait_for_selector(".table-row", timeout=10000)
+        # Dismiss cookie consent if present
+        try:
+            deny_btn = page.wait_for_selector("#CybotCookiebotDialogBodyButtonDecline", timeout=5000)
+            if deny_btn:
+                deny_btn.click()
+                page.wait_for_timeout(1000)
+        except Exception:
+            pass
+
+        page.wait_for_selector(".table-row", timeout=30000)
 
         rows = page.query_selector_all(".table-row")
+        logger.info("Found %d calendar rows", len(rows))
         for row in rows:
             try:
                 _parse_calendar_row(row, db)
