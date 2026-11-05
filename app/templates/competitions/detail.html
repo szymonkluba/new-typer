@@ -20,7 +20,12 @@
     <h3>Place Your Bet</h3>
     <form method="post" action="/bets/place/{{ competition.id }}">
         <div class="form-group">
-            <label for="first">1st Place</label>
+            <label>
+                <span class="position-label">
+                    <span class="position-badge position-badge-1">1</span>
+                    1st Place
+                </span>
+            </label>
             <input type="text" id="first" name="first" placeholder="Athlete name"
                    value="{{ user_bets[0].athlete_name if user_bets|length > 0 else '' }}"
                    required autocomplete="off"
@@ -29,7 +34,12 @@
             <div id="suggestions-1" class="suggestions"></div>
         </div>
         <div class="form-group">
-            <label for="second">2nd Place</label>
+            <label>
+                <span class="position-label">
+                    <span class="position-badge position-badge-2">2</span>
+                    2nd Place
+                </span>
+            </label>
             <input type="text" id="second" name="second" placeholder="Athlete name"
                    value="{{ user_bets[1].athlete_name if user_bets|length > 1 else '' }}"
                    required autocomplete="off"
@@ -38,7 +48,12 @@
             <div id="suggestions-2" class="suggestions"></div>
         </div>
         <div class="form-group">
-            <label for="third">3rd Place</label>
+            <label>
+                <span class="position-label">
+                    <span class="position-badge position-badge-3">3</span>
+                    3rd Place
+                </span>
+            </label>
             <input type="text" id="third" name="third" placeholder="Athlete name"
                    value="{{ user_bets[2].athlete_name if user_bets|length > 2 else '' }}"
                    required autocomplete="off"
@@ -46,7 +61,7 @@
                    hx-target="#suggestions-3" hx-vals='{"q": this.value}'>
             <div id="suggestions-3" class="suggestions"></div>
         </div>
-        <button type="submit" class="btn btn-primary">
+        <button type="submit" class="btn btn-primary btn-block">
             {{ "Update Bet" if user_bets else "Place Bet" }}
         </button>
     </form>
@@ -60,11 +75,14 @@
 {% if user_bets and competition.status == 'upcoming' %}
 <section class="card">
     <h3>Your Current Bet</h3>
-    <ol>
+    <div class="bet-display">
         {% for bet in user_bets %}
-        <li>{{ bet.athlete_name }}</li>
+        <div class="bet-display-item">
+            <span class="position-badge position-badge-{{ bet.position }}">{{ bet.position }}</span>
+            <span>{{ bet.athlete_name }}</span>
+        </div>
         {% endfor %}
-    </ol>
+    </div>
 </section>
 {% endif %}
 
@@ -83,7 +101,13 @@
         <tbody>
             {% for r in results %}
             <tr class="{% if r.rank <= 3 %}podium-{{ r.rank }}{% endif %}">
-                <td>{{ r.rank }}</td>
+                <td>
+                    {% if r.rank <= 3 %}
+                        <span class="rank-badge rank-{{ r.rank }}">{{ r.rank }}</span>
+                    {% else %}
+                        <span class="rank-default">{{ r.rank }}</span>
+                    {% endif %}
+                </td>
                 <td>{{ r.athlete_name }}</td>
                 <td>{{ r.nation }}</td>
                 <td>{{ r.total_points if r.total_points else '-' }}</td>
