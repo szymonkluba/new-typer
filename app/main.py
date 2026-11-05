@@ -47,6 +47,7 @@ async def language_middleware(request: Request, call_next):
         current_lang.reset(token)
     return response
 
+
 app.include_router(auth_router)
 app.include_router(competitions_router)
 app.include_router(bets_router)

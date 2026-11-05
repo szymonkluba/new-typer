@@ -88,7 +88,7 @@ def athlete_autocomplete(
     names = db.query(Result.athlete_name).filter(Result.athlete_name.ilike(f"%{q}%")).distinct().limit(10).all()
     html = "".join(
         f'<a href="#" onclick="event.preventDefault();'
-        f"this.closest('.form-group').querySelector('input').value='{n[0].replace(chr(39), chr(92)+chr(39))}';"
+        f"this.closest('.form-group').querySelector('input').value='{n[0].replace(chr(39), chr(92) + chr(39))}';"
         f"this.parentElement.innerHTML=''\">{n[0]}</a>"
         for n in names
     )

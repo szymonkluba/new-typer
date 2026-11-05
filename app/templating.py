@@ -4,9 +4,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.i18n import DEFAULT_LANG, format_date_localized, translate
 
-current_lang: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "current_lang", default=DEFAULT_LANG
-)
+current_lang: contextvars.ContextVar[str] = contextvars.ContextVar("current_lang", default=DEFAULT_LANG)
 
 templates = Jinja2Templates(directory="app/templates")
 

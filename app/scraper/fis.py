@@ -38,8 +38,7 @@ def _scrape_calendar(db: Session):
         browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
         context = browser.new_context(
             user_agent=(
-                "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 "
-                "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             ),
             viewport={"width": 1280, "height": 800},
         )
@@ -97,8 +96,10 @@ def _parse_calendar_row(row, db: Session):
     venue = "Unknown"
     data_lines = [l for l in lines if len(l) > 1 or not l.isalpha()]
     for line in data_lines:
-        if any(month in line for month in ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]):
+        if any(
+            month in line
+            for month in ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        ):
             date_text = line
             break
 

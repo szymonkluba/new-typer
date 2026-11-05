@@ -4,13 +4,33 @@ DEFAULT_LANG = "pl"
 SUPPORTED_LANGS = ("pl", "en")
 
 POLISH_MONTHS = {
-    1: "sty", 2: "lut", 3: "mar", 4: "kwi", 5: "maj", 6: "cze",
-    7: "lip", 8: "sie", 9: "wrz", 10: "paź", 11: "lis", 12: "gru",
+    1: "sty",
+    2: "lut",
+    3: "mar",
+    4: "kwi",
+    5: "maj",
+    6: "cze",
+    7: "lip",
+    8: "sie",
+    9: "wrz",
+    10: "paź",
+    11: "lis",
+    12: "gru",
 }
 
 ENGLISH_MONTHS = {
-    1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun",
-    7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec",
+    1: "Jan",
+    2: "Feb",
+    3: "Mar",
+    4: "Apr",
+    5: "May",
+    6: "Jun",
+    7: "Jul",
+    8: "Aug",
+    9: "Sep",
+    10: "Oct",
+    11: "Nov",
+    12: "Dec",
 }
 
 TRANSLATIONS: dict[str, dict[str, str]] = {
