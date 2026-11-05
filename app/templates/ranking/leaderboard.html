@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 
-{% block title %}Ranking{% endblock %}
+{% block title %}{{ _("title_ranking") }}{% endblock %}
 
 {% block content %}
 <section class="card">
-    <h2>Leaderboard</h2>
+    <h2>{{ _("title_leaderboard") }}</h2>
 
     {% if rankings %}
     <table class="table">
         <thead>
             <tr>
-                <th>Rank</th>
-                <th>Player</th>
-                <th>Points</th>
+                <th>{{ _("th_rank") }}</th>
+                <th>{{ _("th_player") }}</th>
+                <th>{{ _("th_points") }}</th>
             </tr>
         </thead>
         <tbody>
@@ -32,7 +32,7 @@
         </tbody>
     </table>
     {% else %}
-    <p>No players yet. <a href="/auth/register">Register</a> and start betting!</p>
+    <p>{{ _("no_players_yet") }} <a href="/auth/register">{{ _("nav_register") }}</a> {{ _("and_start_betting") }}</p>
     {% endif %}
 </section>
 {% endblock %}

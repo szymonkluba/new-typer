@@ -1,27 +1,27 @@
 {% extends "base.html" %}
 
-{% block title %}My Bets{% endblock %}
+{% block title %}{{ _("title_my_bets") }}{% endblock %}
 
 {% block content %}
 <section class="card">
-    <h2>My Bets</h2>
+    <h2>{{ _("title_my_bets") }}</h2>
 
     {% if bet_details %}
     <table class="table">
         <thead>
             <tr>
-                <th>Competition</th>
-                <th>Date</th>
-                <th>Position</th>
-                <th>Athlete</th>
-                <th>Points</th>
+                <th>{{ _("th_competition") }}</th>
+                <th>{{ _("th_date") }}</th>
+                <th>{{ _("th_position") }}</th>
+                <th>{{ _("th_athlete") }}</th>
+                <th>{{ _("th_points") }}</th>
             </tr>
         </thead>
         <tbody>
             {% for bd in bet_details %}
             <tr>
                 <td><a href="/competitions/{{ bd.competition.id }}">{{ bd.competition.name }}</a></td>
-                <td>{{ bd.competition.date.strftime('%d %b %Y') }}</td>
+                <td>{{ bd.competition.date|format_date }}</td>
                 <td>
                     <span class="position-badge position-badge-{{ bd.bet.position }}">{{ bd.bet.position }}</span>
                 </td>
@@ -30,7 +30,7 @@
                     {% if bd.points is not none %}
                         <span class="points points-{{ bd.points }} points-pill">{{ bd.points }}</span>
                     {% else %}
-                        <span class="pending">Pending</span>
+                        <span class="pending">{{ _("pending") }}</span>
                     {% endif %}
                 </td>
             </tr>
@@ -38,7 +38,7 @@
         </tbody>
     </table>
     {% else %}
-    <p>You haven't placed any bets yet. <a href="/competitions">Browse competitions</a> to get started!</p>
+    <p>{{ _("no_bets_yet") }} <a href="/competitions">{{ _("browse_competitions") }}</a> {{ _("to_get_started") }}</p>
     {% endif %}
 </section>
 {% endblock %}

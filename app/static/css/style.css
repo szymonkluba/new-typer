@@ -71,6 +71,39 @@ a:hover { color: var(--primary-hover); }
     letter-spacing: -0.5px;
 }
 
+.lang-switcher {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 12px;
+    letter-spacing: 0.5px;
+}
+
+.lang-active {
+    color: var(--accent);
+    padding: 2px 5px;
+}
+
+.lang-sep {
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.lang-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 2px 5px;
+    border-radius: 4px;
+    transition: all 0.15s;
+}
+
+.lang-link:hover {
+    color: var(--text);
+    background: var(--surface);
+}
+
 .nav-links {
     display: flex;
     align-items: center;

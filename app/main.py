@@ -1,8 +1,8 @@
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Query, Request
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
@@ -10,9 +10,11 @@ from app.auth.router import router as auth_router
 from app.bets.router import router as bets_router
 from app.competitions.router import router as competitions_router
 from app.database import create_tables, get_db
+from app.i18n import DEFAULT_LANG, SUPPORTED_LANGS
 from app.models import Competition, User
 from app.ranking.router import router as ranking_router
 from app.scraper.scheduler import start_scheduler, stop_scheduler
+from app.templating import current_lang, templates
 
 
 @asynccontextmanager
@@ -23,15 +25,38 @@ async def lifespan(app: FastAPI):
     stop_scheduler()
 
 
-app = FastAPI(title="Typer - Ski Jumping Bets", lifespan=lifespan)
+app = FastAPI(title="Typer - Ski Jumping Prediction Market", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-templates = Jinja2Templates(directory="app/templates")
+
+@app.middleware("http")
+async def language_middleware(request: Request, call_next):
+    lang = request.cookies.get("lang", DEFAULT_LANG)
+    if lang not in SUPPORTED_LANGS:
+        lang = DEFAULT_LANG
+    token = current_lang.set(lang)
+    try:
+        response = await call_next(request)
+    finally:
+        current_lang.reset(token)
+    return response
 
 app.include_router(auth_router)
 app.include_router(competitions_router)
 app.include_router(bets_router)
 app.include_router(ranking_router)
+
+
+@app.get("/set-lang")
+def set_lang(request: Request, lang: str = Query(...)):
+    if lang not in SUPPORTED_LANGS:
+        lang = DEFAULT_LANG
+    referer = request.headers.get("referer", "/")
+    if not referer.startswith("/") and not referer.startswith(str(request.base_url)):
+        referer = "/"
+    response = RedirectResponse(url=referer, status_code=303)
+    response.set_cookie("lang", lang, max_age=365 * 24 * 3600)
+    return response
 
 
 @app.get("/health")

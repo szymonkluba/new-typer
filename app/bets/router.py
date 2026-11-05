@@ -1,15 +1,14 @@
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
 from app.bets.scoring import score_bet
 from app.database import get_db
 from app.models import Bet, Competition, Result, User
+from app.templating import templates
 
 router = APIRouter(prefix="/bets", tags=["bets"])
-templates = Jinja2Templates(directory="app/templates")
 
 
 @router.post("/place/{competition_id}")

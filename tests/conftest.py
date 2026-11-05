@@ -56,6 +56,7 @@ def client(db):
         from starlette.testclient import TestClient
 
         with TestClient(app) as c:
+            c.cookies.set("lang", "en")
             yield c
 
     app.dependency_overrides.clear()

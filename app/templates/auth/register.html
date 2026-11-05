@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Register{% endblock %}
+{% block title %}{{ _("title_register") }}{% endblock %}
 
 {% block content %}
 <section class="card card-narrow">
-    <h2>Register</h2>
+    <h2>{{ _("title_register") }}</h2>
 
     {% if errors %}
     <div class="alert alert-error">
@@ -14,20 +14,20 @@
 
     <form method="post" action="/auth/register">
         <div class="form-group">
-            <label for="username">Username</label>
+            <label for="username">{{ _("label_username") }}</label>
             <input type="text" id="username" name="username" value="{{ username | default('') }}" required autofocus minlength="3">
         </div>
         <div class="form-group">
-            <label for="password">Password</label>
+            <label for="password">{{ _("label_password") }}</label>
             <input type="password" id="password" name="password" required minlength="6">
         </div>
         <div class="form-group">
-            <label for="password_confirm">Confirm Password</label>
+            <label for="password_confirm">{{ _("label_password_confirm") }}</label>
             <input type="password" id="password_confirm" name="password_confirm" required minlength="6">
         </div>
-        <button type="submit" class="btn btn-primary btn-block">Register</button>
+        <button type="submit" class="btn btn-primary btn-block">{{ _("btn_register") }}</button>
     </form>
 
-    <p class="text-center">Already have an account? <a href="/auth/login">Login</a></p>
+    <p class="text-center">{{ _("have_account") }} <a href="/auth/login">{{ _("btn_login") }}</a></p>
 </section>
 {% endblock %}

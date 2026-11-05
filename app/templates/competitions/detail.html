@@ -8,7 +8,7 @@
         <h2>{{ competition.name }}</h2>
         <div class="comp-meta">
             <span>{{ competition.venue }}</span>
-            <span>{{ competition.date.strftime('%d %b %Y') }}</span>
+            <span>{{ competition.date|format_date }}</span>
             <span class="badge badge-{{ competition.category | lower }}">{{ competition.category }}</span>
             <span class="badge badge-{{ competition.status }}">{{ competition.status }}</span>
         </div>
@@ -17,16 +17,16 @@
 
 {% if competition.status == 'upcoming' and user %}
 <section class="card">
-    <h3>Place Your Bet</h3>
+    <h3>{{ _("place_your_bet") }}</h3>
     <form method="post" action="/bets/place/{{ competition.id }}">
         <div class="form-group">
             <label>
                 <span class="position-label">
                     <span class="position-badge position-badge-1">1</span>
-                    1st Place
+                    {{ _("place_1st") }}
                 </span>
             </label>
-            <input type="text" id="first" name="first" placeholder="Athlete name"
+            <input type="text" id="first" name="first" placeholder="{{ _("placeholder_athlete") }}"
                    value="{{ user_bets[0].athlete_name if user_bets|length > 0 else '' }}"
                    required autocomplete="off"
                    hx-get="/bets/athletes" hx-trigger="keyup changed delay:300ms"
@@ -37,10 +37,10 @@
             <label>
                 <span class="position-label">
                     <span class="position-badge position-badge-2">2</span>
-                    2nd Place
+                    {{ _("place_2nd") }}
                 </span>
             </label>
-            <input type="text" id="second" name="second" placeholder="Athlete name"
+            <input type="text" id="second" name="second" placeholder="{{ _("placeholder_athlete") }}"
                    value="{{ user_bets[1].athlete_name if user_bets|length > 1 else '' }}"
                    required autocomplete="off"
                    hx-get="/bets/athletes" hx-trigger="keyup changed delay:300ms"
@@ -51,10 +51,10 @@
             <label>
                 <span class="position-label">
                     <span class="position-badge position-badge-3">3</span>
-                    3rd Place
+                    {{ _("place_3rd") }}
                 </span>
             </label>
-            <input type="text" id="third" name="third" placeholder="Athlete name"
+            <input type="text" id="third" name="third" placeholder="{{ _("placeholder_athlete") }}"
                    value="{{ user_bets[2].athlete_name if user_bets|length > 2 else '' }}"
                    required autocomplete="off"
                    hx-get="/bets/athletes" hx-trigger="keyup changed delay:300ms"
@@ -62,19 +62,19 @@
             <div id="suggestions-3" class="suggestions"></div>
         </div>
         <button type="submit" class="btn btn-primary btn-block">
-            {{ "Update Bet" if user_bets else "Place Bet" }}
+            {{ _("btn_update_bet") if user_bets else _("btn_place_bet") }}
         </button>
     </form>
 </section>
 {% elif competition.status == 'upcoming' and not user %}
 <section class="card">
-    <p><a href="/auth/login">Login</a> to place your bet!</p>
+    <p><a href="/auth/login">{{ _("btn_login") }}</a> {{ _("login_to_bet") }}</p>
 </section>
 {% endif %}
 
 {% if user_bets and competition.status == 'upcoming' %}
 <section class="card">
-    <h3>Your Current Bet</h3>
+    <h3>{{ _("your_current_bet") }}</h3>
     <div class="bet-display">
         {% for bet in user_bets %}
         <div class="bet-display-item">
@@ -88,14 +88,14 @@
 
 {% if results %}
 <section class="card">
-    <h3>Results</h3>
+    <h3>{{ _("results") }}</h3>
     <table class="table">
         <thead>
             <tr>
-                <th>Rank</th>
-                <th>Athlete</th>
-                <th>Nation</th>
-                <th>Points</th>
+                <th>{{ _("th_rank") }}</th>
+                <th>{{ _("th_athlete") }}</th>
+                <th>{{ _("th_nation") }}</th>
+                <th>{{ _("th_points") }}</th>
             </tr>
         </thead>
         <tbody>

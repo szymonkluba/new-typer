@@ -1,22 +1,22 @@
 {% extends "base.html" %}
 
-{% block title %}Competitions{% endblock %}
+{% block title %}{{ _("title_competitions") }}{% endblock %}
 
 {% block content %}
 <section class="card">
-    <h2>Competitions</h2>
+    <h2>{{ _("title_competitions") }}</h2>
 
     <div class="tabs">
-        <a href="/competitions?status=upcoming" class="tab {% if status == 'upcoming' %}active{% endif %}">Upcoming</a>
-        <a href="/competitions?status=completed" class="tab {% if status == 'completed' %}active{% endif %}">Completed</a>
-        <a href="/competitions?status=all" class="tab {% if status == 'all' %}active{% endif %}">All</a>
+        <a href="/competitions?status=upcoming" class="tab {% if status == 'upcoming' %}active{% endif %}">{{ _("tab_upcoming") }}</a>
+        <a href="/competitions?status=completed" class="tab {% if status == 'completed' %}active{% endif %}">{{ _("tab_completed") }}</a>
+        <a href="/competitions?status=all" class="tab {% if status == 'all' %}active{% endif %}">{{ _("tab_all") }}</a>
     </div>
 
     {% if competitions %}
     <div class="competition-list">
         {% for comp in competitions %}
         <a href="/competitions/{{ comp.id }}" class="competition-row">
-            <span class="comp-date">{{ comp.date.strftime('%d %b %Y') }}</span>
+            <span class="comp-date">{{ comp.date|format_date }}</span>
             <span class="comp-venue">{{ comp.venue }}</span>
             <span class="comp-name">{{ comp.name }}</span>
             <span class="comp-type">{{ comp.type }}</span>
@@ -27,7 +27,7 @@
         {% endfor %}
     </div>
     {% else %}
-    <p>No competitions found.</p>
+    <p>{{ _("no_competitions") }}</p>
     {% endif %}
 </section>
 {% endblock %}

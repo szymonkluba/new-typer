@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ current_lang() }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0f1923">
-    <title>{% block title %}Typer{% endblock %} - Ski Jumping Bets</title>
+    <title>{% block title %}Typer{% endblock %} - {{ _("site_subtitle") }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -15,18 +15,29 @@
     <nav class="navbar">
         <div class="container">
             <a href="/" class="logo">Typer</a>
+            <div class="lang-switcher">
+                {% if current_lang() == 'pl' %}
+                    <span class="lang-active">PL</span>
+                    <span class="lang-sep">|</span>
+                    <a href="/set-lang?lang=en" class="lang-link">EN</a>
+                {% else %}
+                    <a href="/set-lang?lang=pl" class="lang-link">PL</a>
+                    <span class="lang-sep">|</span>
+                    <span class="lang-active">EN</span>
+                {% endif %}
+            </div>
             <input type="checkbox" id="nav-toggle" class="nav-toggle">
             <label for="nav-toggle" class="nav-toggle-label"><span></span></label>
             <div class="nav-links">
-                <a href="/competitions">Competitions</a>
-                <a href="/ranking">Ranking</a>
+                <a href="/competitions">{{ _("nav_competitions") }}</a>
+                <a href="/ranking">{{ _("nav_ranking") }}</a>
                 {% if user %}
-                    <a href="/bets/my">My Bets</a>
+                    <a href="/bets/my">{{ _("nav_my_bets") }}</a>
                     <span class="nav-user">{{ user.username }}</span>
-                    <a href="/auth/logout" class="btn btn-sm">Logout</a>
+                    <a href="/auth/logout" class="btn btn-sm">{{ _("nav_logout") }}</a>
                 {% else %}
-                    <a href="/auth/login" class="btn btn-sm">Login</a>
-                    <a href="/auth/register" class="btn btn-sm btn-primary">Register</a>
+                    <a href="/auth/login" class="btn btn-sm">{{ _("nav_login") }}</a>
+                    <a href="/auth/register" class="btn btn-sm btn-primary">{{ _("nav_register") }}</a>
                 {% endif %}
             </div>
         </div>
@@ -37,7 +48,7 @@
     </main>
 
     <footer class="container">
-        <p>Typer &mdash; Ski Jumping Betting App</p>
+        <p>Typer &mdash; {{ _("site_subtitle") }}</p>
     </footer>
 </body>
 </html>

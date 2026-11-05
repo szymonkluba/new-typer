@@ -1,13 +1,12 @@
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models import Competition, Result, User
+from app.templating import _, templates
 
 router = APIRouter(prefix="/competitions", tags=["competitions"])
-templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("")
@@ -38,7 +37,7 @@ def competition_detail(
     if not competition:
         return templates.TemplateResponse(
             "error.html",
-            {"request": request, "user": user, "message": "Competition not found."},
+            {"request": request, "user": user, "message": _("err_competition_not_found")},
             status_code=404,
         )
 

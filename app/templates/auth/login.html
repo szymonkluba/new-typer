@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Login{% endblock %}
+{% block title %}{{ _("title_login") }}{% endblock %}
 
 {% block content %}
 <section class="card card-narrow">
-    <h2>Login</h2>
+    <h2>{{ _("title_login") }}</h2>
 
     {% if errors %}
     <div class="alert alert-error">
@@ -14,16 +14,16 @@
 
     <form method="post" action="/auth/login">
         <div class="form-group">
-            <label for="username">Username</label>
+            <label for="username">{{ _("label_username") }}</label>
             <input type="text" id="username" name="username" value="{{ username | default('') }}" required autofocus>
         </div>
         <div class="form-group">
-            <label for="password">Password</label>
+            <label for="password">{{ _("label_password") }}</label>
             <input type="password" id="password" name="password" required>
         </div>
-        <button type="submit" class="btn btn-primary btn-block">Login</button>
+        <button type="submit" class="btn btn-primary btn-block">{{ _("btn_login") }}</button>
     </form>
 
-    <p class="text-center">Don't have an account? <a href="/auth/register">Register</a></p>
+    <p class="text-center">{{ _("no_account") }} <a href="/auth/register">{{ _("nav_register") }}</a></p>
 </section>
 {% endblock %}

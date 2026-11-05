@@ -1,14 +1,13 @@
 from fastapi import APIRouter, Depends, Request
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
 from app.bets.scoring import score_bet
 from app.database import get_db
 from app.models import Bet, Competition, Result, User
+from app.templating import templates
 
 router = APIRouter(prefix="/ranking", tags=["ranking"])
-templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("")

@@ -1,25 +1,25 @@
 {% extends "base.html" %}
 
-{% block title %}Home{% endblock %}
+{% block title %}{{ _("title_home") }}{% endblock %}
 
 {% block content %}
 <section class="hero">
     <h1><span>Typer</span></h1>
-    <p>Predict ski jumping podiums and compete with your friends!</p>
+    <p>{{ _("hero_tagline") }}</p>
     {% if not user %}
-        <a href="/auth/register" class="btn btn-primary btn-lg">Join Now</a>
+        <a href="/auth/register" class="btn btn-primary btn-lg">{{ _("hero_join") }}</a>
     {% endif %}
 </section>
 
 {% if top_players %}
 <section class="card">
-    <h2>Top Players</h2>
+    <h2>{{ _("top_players") }}</h2>
     <table class="table">
         <thead>
             <tr>
-                <th>Rank</th>
-                <th>Player</th>
-                <th>Points</th>
+                <th>{{ _("th_rank") }}</th>
+                <th>{{ _("th_player") }}</th>
+                <th>{{ _("th_points") }}</th>
             </tr>
         </thead>
         <tbody>
@@ -39,11 +39,11 @@
 
 {% if upcoming %}
 <section class="card">
-    <h2>Upcoming Competitions</h2>
+    <h2>{{ _("upcoming_competitions") }}</h2>
     <div class="competition-list">
         {% for comp in upcoming %}
         <a href="/competitions/{{ comp.id }}" class="competition-row">
-            <span class="comp-date">{{ comp.date.strftime('%d %b %Y') }}</span>
+            <span class="comp-date">{{ comp.date|format_date }}</span>
             <span class="comp-venue">{{ comp.venue }}</span>
             <span class="comp-name">{{ comp.name }}</span>
             <span class="badge badge-{{ comp.category | lower }}">{{ comp.category }}</span>
@@ -51,12 +51,12 @@
         </a>
         {% endfor %}
     </div>
-    <a href="/competitions" class="link">View all competitions &rarr;</a>
+    <a href="/competitions" class="link">{{ _("view_all_competitions") }} &rarr;</a>
 </section>
 {% else %}
 <section class="card">
-    <h2>No Upcoming Competitions</h2>
-    <p>Check back later or wait for the scraper to fetch new events from FIS.</p>
+    <h2>{{ _("no_upcoming") }}</h2>
+    <p>{{ _("no_upcoming_detail") }}</p>
 </section>
 {% endif %}
 {% endblock %}

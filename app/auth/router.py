@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import create_session_token, get_current_user
@@ -8,9 +7,9 @@ from app.auth.utils import hash_password, verify_password
 from app.config import COOKIE_MAX_AGE, COOKIE_NAME
 from app.database import get_db
 from app.models import User
+from app.templating import _, templates
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/register")
@@ -30,13 +29,13 @@ def register(
 ):
     errors = []
     if len(username) < 3:
-        errors.append("Username must be at least 3 characters.")
+        errors.append(_("err_username_short"))
     if len(password) < 6:
-        errors.append("Password must be at least 6 characters.")
+        errors.append(_("err_password_short"))
     if password != password_confirm:
-        errors.append("Passwords do not match.")
+        errors.append(_("err_password_mismatch"))
     if db.query(User).filter(User.username == username).first():
-        errors.append("Username already taken.")
+        errors.append(_("err_username_taken"))
 
     if errors:
         return templates.TemplateResponse(
@@ -72,7 +71,7 @@ def login(
     if not user or not verify_password(password, user.password_hash):
         return templates.TemplateResponse(
             "auth/login.html",
-            {"request": request, "errors": ["Invalid username or password."], "username": username},
+            {"request": request, "errors": [_("err_invalid_credentials")], "username": username},
         )
 
     response = RedirectResponse(url="/", status_code=303)

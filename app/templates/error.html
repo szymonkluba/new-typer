@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Error{% endblock %}
+{% block title %}{{ _("title_error") }}{% endblock %}
 
 {% block content %}
 <section class="card">
-    <h2>Error</h2>
+    <h2>{{ _("title_error") }}</h2>
     <p>{{ message }}</p>
-    <a href="/" class="btn">Back to Home</a>
+    <a href="/" class="btn">{{ _("back_to_home") }}</a>
 </section>
 {% endblock %}

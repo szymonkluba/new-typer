@@ -202,29 +202,28 @@ class TestAthleteAutocomplete:
         make_result(comp.id, 1, "Stefan Kraft", "AUT")
         resp = client.get("/bets/athletes?q=Kra")
         assert resp.status_code == 200
-        data = resp.json()
-        assert "Stefan Kraft" in data
+        assert "Stefan Kraft" in resp.text
 
     def test_athletes_autocomplete_short_query(self, client):
         resp = client.get("/bets/athletes?q=K")
-        assert resp.json() == []
+        assert resp.text == ""
 
     def test_athletes_autocomplete_empty_query(self, client):
         resp = client.get("/bets/athletes?q=")
-        assert resp.json() == []
+        assert resp.text == ""
 
     def test_athletes_autocomplete_no_match(self, client, make_competition, make_result):
         comp = make_competition(status="completed")
         make_result(comp.id, 1, "Stefan Kraft", "AUT")
         resp = client.get("/bets/athletes?q=xyz")
-        assert resp.json() == []
+        assert resp.text == ""
 
     def test_athletes_autocomplete_max_10(self, client, make_competition, make_result):
         comp = make_competition(status="completed")
         for i in range(15):
             make_result(comp.id, i + 1, f"Athlete {i}", "POL")
         resp = client.get("/bets/athletes?q=Athlete")
-        assert len(resp.json()) <= 10
+        assert resp.text.count("<a ") <= 10
 
     def test_athletes_autocomplete_distinct(self, client, make_competition, make_result):
         c1 = make_competition(status="completed")
@@ -232,13 +231,13 @@ class TestAthleteAutocomplete:
         make_result(c1.id, 1, "Stefan Kraft", "AUT")
         make_result(c2.id, 1, "Stefan Kraft", "AUT")
         resp = client.get("/bets/athletes?q=Kraft")
-        assert resp.json().count("Stefan Kraft") == 1
+        assert resp.text.count("<a ") == 1
 
     def test_athletes_autocomplete_case_insensitive(self, client, make_competition, make_result):
         comp = make_competition(status="completed")
         make_result(comp.id, 1, "KRAFT Stefan", "AUT")
         resp = client.get("/bets/athletes?q=kraft")
-        assert len(resp.json()) >= 1
+        assert "KRAFT Stefan" in resp.text
 
     def test_athletes_autocomplete_no_auth_required(self, client, make_competition, make_result):
         comp = make_competition(status="completed")
@@ -246,6 +245,6 @@ class TestAthleteAutocomplete:
         resp = client.get("/bets/athletes?q=Te")
         assert resp.status_code == 200
 
-    def test_athletes_autocomplete_returns_json(self, client):
+    def test_athletes_autocomplete_returns_html(self, client):
         resp = client.get("/bets/athletes?q=test")
-        assert "application/json" in resp.headers["content-type"]
+        assert "text/html" in resp.headers["content-type"]
