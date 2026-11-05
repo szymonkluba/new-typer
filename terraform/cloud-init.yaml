@@ -4,14 +4,19 @@ package_update: true
 
 packages:
   - dnf-utils
-  - nginx
-  - certbot
-  - python3-certbot-nginx
   - git
+  - oracle-epel-release-el9
 
 runcmd:
-  # Install Docker CE
-  - dnf config-manager --add-repo https://download.docker.com/linux/oracle/docker-ce.repo
+  # Enable EPEL repo (installed by oracle-epel-release-el9 but disabled by default)
+  - dnf config-manager --enable ol9_developer_EPEL
+
+  # Install nginx and certbot (certbot needs EPEL)
+  - dnf install -y nginx
+  - dnf install -y certbot python3-certbot-nginx
+
+  # Install Docker CE — use CentOS repo for aarch64 compatibility
+  - dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
   - dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 
   # Enable and start Docker

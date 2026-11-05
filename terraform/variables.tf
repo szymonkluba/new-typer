@@ -56,3 +56,9 @@ variable "boot_volume_size_in_gbs" {
   type        = number
   default     = 50
 }
+
+variable "availability_domain_number" {
+  description = "AD number to use (1, 2, or 3). Try others if you get 'Out of host capacity'"
+  type        = number
+  default     = 1
+}
