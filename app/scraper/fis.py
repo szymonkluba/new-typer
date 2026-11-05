@@ -80,7 +80,7 @@ def _parse_calendar_row(row, db: Session):
         try:
             fis_event_id = int(href.split("eventid=")[1].split("&")[0])
         except (ValueError, IndexError):
-            pass
+            return
 
     if fis_event_id:
         existing = db.query(Competition).filter(Competition.fis_event_id == fis_event_id).first()
@@ -123,28 +123,21 @@ def _parse_calendar_row(row, db: Session):
                 category = cat
                 break
 
-    # Gender: check the last single-letter lines
-    gender = "M"
-    for line in reversed(lines):
-        if line.strip().upper() in ("W", "M"):
-            gender = line.strip().upper()
-            break
-
-    # For events with both M and W, check if M is present
     has_m = any(l.strip().upper() == "M" for l in lines)
     has_w = any(l.strip().upper() == "W" for l in lines)
     if has_w and not has_m:
         gender = "W"
-    elif has_m:
+    else:
         gender = "M"
 
-    if category not in ("WC",) or gender != "M":
+    if category != "WC" or gender != "M":
         return
 
     try:
         comp_date = _parse_fis_date(date_text)
     except (ValueError, IndexError):
-        comp_date = date.today()
+        logger.warning("Unparseable date '%s' for %s, skipping row", date_text, venue)
+        return
 
     name = f"Ski Jumping {category} - {venue}"
 
