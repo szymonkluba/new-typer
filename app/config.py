@@ -9,8 +9,15 @@ FIS_CALENDAR_URL = "https://www.fis-ski.com/DB/ski-jumping/calendar-results.html
 FIS_EVENT_URL = "https://www.fis-ski.com/DB/general/event-details.html"
 FIS_RESULTS_URL = "https://www.fis-ski.com/DB/general/results.html"
 
+FIS_ATHLETES_URL = (
+    "https://www.fis-ski.com/DB/general/biographies.html?"
+    "lastname=&firstname=&sectorcode=JP&gendercode=M&birthyear="
+    "&skiclub=&skis=&nationcode=&fiscode=&status=O&search=true"
+)
+
 SCRAPER_COMPETITIONS_CRON_HOUR = int(os.getenv("SCRAPER_COMPETITIONS_CRON_HOUR", "6"))
 SCRAPER_RESULTS_INTERVAL_HOURS = int(os.getenv("SCRAPER_RESULTS_INTERVAL_HOURS", "2"))
+SCRAPER_ATHLETES_CRON_DAY = os.getenv("SCRAPER_ATHLETES_CRON_DAY", "mon")
 
 TIMEZONE = os.getenv("TIMEZONE", "Europe/Warsaw")
 BET_CUTOFF_HOUR = int(os.getenv("BET_CUTOFF_HOUR", "16"))

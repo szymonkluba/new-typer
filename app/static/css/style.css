@@ -573,8 +573,10 @@ a:hover { color: var(--primary-hover); }
 
 .suggestions:empty { display: none; }
 
-.suggestions a {
-    display: block;
+.suggestion-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 10px 14px;
     text-decoration: none;
     color: var(--text);
@@ -583,9 +585,29 @@ a:hover { color: var(--primary-hover); }
     transition: background 0.1s;
 }
 
-.suggestions a:hover {
+.suggestion-item:hover,
+.suggestion-item.active {
     background: var(--primary);
     color: #fff;
+}
+
+.suggestion-item.active .suggestion-nation,
+.suggestion-item:hover .suggestion-nation {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.suggestion-nation {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.suggestion-empty {
+    padding: 10px 14px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-style: italic;
 }
 
 /* ── Links ── */

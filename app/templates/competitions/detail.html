@@ -30,7 +30,7 @@
                    value="{{ user_bets[0].athlete_name if user_bets|length > 0 else '' }}"
                    required autocomplete="off"
                    hx-get="/bets/athletes" hx-trigger="keyup changed delay:300ms"
-                   hx-target="#suggestions-1" hx-vals='{"q": this.value}'>
+                   hx-target="#suggestions-1">
             <div id="suggestions-1" class="suggestions"></div>
         </div>
         <div class="form-group">
@@ -44,7 +44,7 @@
                    value="{{ user_bets[1].athlete_name if user_bets|length > 1 else '' }}"
                    required autocomplete="off"
                    hx-get="/bets/athletes" hx-trigger="keyup changed delay:300ms"
-                   hx-target="#suggestions-2" hx-vals='{"q": this.value}'>
+                   hx-target="#suggestions-2">
             <div id="suggestions-2" class="suggestions"></div>
         </div>
         <div class="form-group">
@@ -58,7 +58,7 @@
                    value="{{ user_bets[2].athlete_name if user_bets|length > 2 else '' }}"
                    required autocomplete="off"
                    hx-get="/bets/athletes" hx-trigger="keyup changed delay:300ms"
-                   hx-target="#suggestions-3" hx-vals='{"q": this.value}'>
+                   hx-target="#suggestions-3">
             <div id="suggestions-3" class="suggestions"></div>
         </div>
         <button type="submit" class="btn btn-primary btn-block">
@@ -121,4 +121,40 @@
     </table>
 </section>
 {% endif %}
+
+<script>
+document.addEventListener('keydown', function(e) {
+    var input = e.target;
+    if (!input.matches('.form-group input[type="text"]')) return;
+
+    var suggestions = input.closest('.form-group').querySelector('.suggestions');
+    if (!suggestions) return;
+
+    if (e.key === 'Escape') {
+        suggestions.innerHTML = '';
+        return;
+    }
+
+    var items = suggestions.querySelectorAll('.suggestion-item');
+    if (!items.length) return;
+
+    var active = suggestions.querySelector('.suggestion-item.active');
+    var index = Array.prototype.indexOf.call(items, active);
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (active) active.classList.remove('active');
+        index = (index + 1) % items.length;
+        items[index].classList.add('active');
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (active) active.classList.remove('active');
+        index = index <= 0 ? items.length - 1 : index - 1;
+        items[index].classList.add('active');
+    } else if (e.key === 'Enter' && active) {
+        e.preventDefault();
+        active.click();
+    }
+});
+</script>
 {% endblock %}

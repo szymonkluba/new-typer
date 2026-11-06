@@ -10,7 +10,7 @@ from app.auth.dependencies import create_session_token
 from app.auth.utils import hash_password
 from app.config import COOKIE_NAME
 from app.database import Base, get_db
-from app.models import Bet, Competition, Result, User
+from app.models import Athlete, Bet, Competition, Result, User
 
 
 @pytest.fixture(scope="session")
@@ -130,10 +130,11 @@ def make_competition(db):
 
 @pytest.fixture()
 def make_result(db):
-    def _make_result(competition_id, rank, athlete_name, nation="POL", total_points=None):
+    def _make_result(competition_id, rank, athlete_name, nation="POL", total_points=None, fis_code=None):
         result = Result(
             competition_id=competition_id,
             rank=rank,
+            fis_code=fis_code,
             athlete_name=athlete_name,
             nation=nation,
             total_points=total_points,
@@ -144,6 +145,27 @@ def make_result(db):
         return result
 
     return _make_result
+
+
+@pytest.fixture()
+def make_athlete(db):
+    _counter = [0]
+
+    def _make_athlete(fis_code=None, competitor_id=None, name=None, nation="POL"):
+        _counter[0] += 1
+        if fis_code is None:
+            fis_code = 1000 + _counter[0]
+        if competitor_id is None:
+            competitor_id = 200000 + _counter[0]
+        if name is None:
+            name = f"TESTATHLETE Name{_counter[0]}"
+        athlete = Athlete(fis_code=fis_code, competitor_id=competitor_id, name=name, nation=nation)
+        db.add(athlete)
+        db.commit()
+        db.refresh(athlete)
+        return athlete
+
+    return _make_athlete
 
 
 @pytest.fixture()

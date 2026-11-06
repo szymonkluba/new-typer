@@ -59,4 +59,7 @@ def get_user_total_points(db: Session, user_id: int) -> int:
 
 
 def normalize_name(name: str) -> str:
+    import unicodedata
+
+    name = unicodedata.normalize("NFKC", name)
     return " ".join(name.upper().split())

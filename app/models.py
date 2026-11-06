@@ -18,6 +18,17 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 
 
+class Athlete(Base):
+    __tablename__ = "athletes"
+
+    id = Column(Integer, primary_key=True)
+    fis_code = Column(Integer, unique=True, nullable=False)
+    competitor_id = Column(Integer, unique=True, nullable=False)
+    name = Column(String(200), nullable=False)
+    nation = Column(String(10), nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -66,6 +77,7 @@ class Result(Base):
     id = Column(Integer, primary_key=True)
     competition_id = Column(Integer, ForeignKey("competitions.id"), nullable=False)
     rank = Column(Integer, nullable=False)
+    fis_code = Column(Integer, nullable=True)
     athlete_name = Column(String(200), nullable=False)
     nation = Column(String(10), nullable=False)
     total_points = Column(Float, nullable=True)

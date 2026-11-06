@@ -209,3 +209,25 @@ def test_get_user_total_points_incomplete_podium(db, make_user, make_competition
     make_result(comp.id, 2, "B", "GER")
     make_bet(user.id, comp.id, 1, "A")
     assert get_user_total_points(db, user.id) == 0
+
+
+# --- end-to-end canonical name scoring ---
+
+
+def test_scoring_with_canonical_athlete_names(db, make_user, make_competition, make_result, make_bet):
+    """Verify scoring works when all names come from the same Athlete record."""
+    user = make_user()
+    comp = make_competition(status="completed")
+    make_result(comp.id, 1, "KRAFT Stefan", "AUT", fis_code=6996)
+    make_result(comp.id, 2, "KUBACKI Dawid", "POL", fis_code=6997)
+    make_result(comp.id, 3, "GRANERUD Halvor Egner", "NOR", fis_code=6998)
+    make_bet(user.id, comp.id, 1, "KRAFT Stefan")
+    make_bet(user.id, comp.id, 2, "KUBACKI Dawid")
+    make_bet(user.id, comp.id, 3, "GRANERUD Halvor Egner")
+    scores = score_competition_bets(db, comp.id)
+    assert scores[user.id] == 9
+
+
+def test_normalize_name_unicode_nfkc():
+    name_with_nbsp = "KRAFT Stefan"
+    assert normalize_name(name_with_nbsp) == "KRAFT STEFAN"
