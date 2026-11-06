@@ -4,8 +4,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.models import Competition, Result
-from app.scraper.fis import _parse_fis_date, sync_competitions_from_fis, sync_results_from_fis
+from app.models import Athlete, Competition, Result
+from app.scraper.fis import (
+    _parse_athlete_row,
+    _parse_fis_date,
+    sync_athletes_from_fis,
+    sync_competitions_from_fis,
+    sync_results_from_fis,
+)
 
 # --- _parse_fis_date ---
 
@@ -259,3 +265,184 @@ class TestSyncCompetitions:
         ):
             sync_competitions_from_fis()
         sys.modules.update(saved)
+
+
+# --- sync_athletes_from_fis ---
+
+
+def _mock_athlete_row(fis_code, competitor_id, name, nation):
+    """Create a mock Playwright ElementHandle that mimics an athlete row."""
+    row = MagicMock()
+    row.get_attribute.return_value = (
+        f"https://www.fis-ski.com/DB/general/athlete-biography.html?sectorcode=JP&competitorid={competitor_id}"
+    )
+
+    fis_code_div = MagicMock()
+    fis_code_div.inner_text.return_value = str(fis_code)
+    status_div = MagicMock()
+    status_div.inner_text.return_value = "Active"
+
+    col0 = MagicMock()
+    col0.query_selector_all.return_value = [status_div, fis_code_div]
+
+    col1 = MagicMock()
+    col1.inner_text.return_value = name
+
+    col2 = MagicMock()
+
+    nation_el = MagicMock()
+    nation_el.inner_text.return_value = nation
+    row.query_selector.return_value = nation_el
+
+    row.query_selector_all.return_value = [col0, col1, col2]
+    return row
+
+
+class TestParseAthleteRow:
+    def test_parses_valid_row(self):
+        row = _mock_athlete_row(6996, 182547, "AALTO Antti", "FIN")
+        result = _parse_athlete_row(row)
+        assert result == (6996, 182547, "AALTO Antti", "FIN")
+
+    def test_returns_none_for_missing_href(self):
+        row = MagicMock()
+        row.get_attribute.return_value = None
+        assert _parse_athlete_row(row) is None
+
+    def test_returns_none_for_no_competitor_id(self):
+        row = MagicMock()
+        row.get_attribute.return_value = "https://www.fis-ski.com/DB/general/biographies.html"
+        assert _parse_athlete_row(row) is None
+
+    def test_returns_none_for_too_few_columns(self):
+        row = MagicMock()
+        row.get_attribute.return_value = "https://www.fis-ski.com/DB/general/athlete-biography.html?competitorid=123"
+        row.query_selector_all.return_value = [MagicMock(), MagicMock()]
+        assert _parse_athlete_row(row) is None
+
+    def test_returns_none_for_non_numeric_fis_code(self):
+        row = MagicMock()
+        row.get_attribute.return_value = "https://www.fis-ski.com/DB/general/athlete-biography.html?competitorid=123"
+        fis_code_div = MagicMock()
+        fis_code_div.inner_text.return_value = "abc"
+        status_div = MagicMock()
+        col0 = MagicMock()
+        col0.query_selector_all.return_value = [status_div, fis_code_div]
+        col1 = MagicMock()
+        col1.inner_text.return_value = "TEST Name"
+        col2 = MagicMock()
+        row.query_selector_all.return_value = [col0, col1, col2]
+        assert _parse_athlete_row(row) is None
+
+    def test_returns_none_for_empty_name(self):
+        row = _mock_athlete_row(6996, 182547, "", "FIN")
+        assert _parse_athlete_row(row) is None
+
+
+class TestSyncAthletes:
+    def test_sync_athletes_skips_without_playwright(self):
+        saved = {k: sys.modules.pop(k) for k in list(sys.modules) if k.startswith("playwright")}
+        with patch.dict(sys.modules, {"playwright": None, "playwright.sync_api": None}):
+            sync_athletes_from_fis()
+        sys.modules.update(saved)
+
+    def test_sync_athletes_handles_exception(self, db):
+        mock_pw = MagicMock()
+        saved = {k: sys.modules.pop(k) for k in list(sys.modules) if k.startswith("playwright")}
+        wrapped = _NoCloseSession(db)
+        with (
+            patch.dict(sys.modules, {"playwright": mock_pw, "playwright.sync_api": mock_pw.sync_api}),
+            patch("app.scraper.fis.SessionLocal", return_value=wrapped),
+            patch("app.scraper.fis._scrape_athletes", side_effect=RuntimeError("boom")),
+        ):
+            sync_athletes_from_fis()
+        sys.modules.update(saved)
+
+    def test_sync_athletes_inserts_new(self, db, test_engine):
+        mock_rows = [
+            _mock_athlete_row(6996, 182547, "AALTO Antti", "FIN"),
+            _mock_athlete_row(9348, 245955, "AARDAL Johannes", "NOR"),
+        ]
+
+        mock_page = MagicMock()
+        mock_page.query_selector_all.return_value = mock_rows
+        mock_page.wait_for_selector.return_value = MagicMock()
+
+        mock_context = MagicMock()
+        mock_context.new_page.return_value = mock_page
+
+        mock_browser = MagicMock()
+        mock_browser.new_context.return_value = mock_context
+
+        mock_pw_instance = MagicMock()
+        mock_pw_instance.chromium.launch.return_value = mock_browser
+        mock_pw_instance.__enter__ = MagicMock(return_value=mock_pw_instance)
+        mock_pw_instance.__exit__ = MagicMock(return_value=False)
+
+        mock_sync_pw = MagicMock(return_value=mock_pw_instance)
+
+        saved = {k: sys.modules.pop(k) for k in list(sys.modules) if k.startswith("playwright")}
+        mock_pw_module = MagicMock()
+        mock_pw_module.sync_api.sync_playwright = mock_sync_pw
+        wrapped = _NoCloseSession(db)
+        with (
+            patch.dict(
+                sys.modules,
+                {"playwright": mock_pw_module, "playwright.sync_api": mock_pw_module.sync_api},
+            ),
+            patch("app.scraper.fis.SessionLocal", return_value=wrapped),
+        ):
+            sync_athletes_from_fis()
+
+        sys.modules.update(saved)
+
+        db.expire_all()
+        athletes = db.query(Athlete).all()
+        assert len(athletes) == 2
+        aalto = db.query(Athlete).filter(Athlete.fis_code == 6996).first()
+        assert aalto.name == "AALTO Antti"
+        assert aalto.nation == "FIN"
+        assert aalto.competitor_id == 182547
+
+    def test_sync_athletes_updates_existing(self, db, make_athlete, test_engine):
+        make_athlete(fis_code=6996, competitor_id=182547, name="AALTO Antti", nation="FIN")
+
+        mock_rows = [
+            _mock_athlete_row(6996, 182547, "AALTO Antti-Pekka", "FIN"),
+        ]
+
+        mock_page = MagicMock()
+        mock_page.query_selector_all.return_value = mock_rows
+        mock_page.wait_for_selector.return_value = MagicMock()
+
+        mock_context = MagicMock()
+        mock_context.new_page.return_value = mock_page
+
+        mock_browser = MagicMock()
+        mock_browser.new_context.return_value = mock_context
+
+        mock_pw_instance = MagicMock()
+        mock_pw_instance.chromium.launch.return_value = mock_browser
+        mock_pw_instance.__enter__ = MagicMock(return_value=mock_pw_instance)
+        mock_pw_instance.__exit__ = MagicMock(return_value=False)
+
+        mock_pw_module = MagicMock()
+        mock_pw_module.sync_api.sync_playwright = MagicMock(return_value=mock_pw_instance)
+
+        saved = {k: sys.modules.pop(k) for k in list(sys.modules) if k.startswith("playwright")}
+        wrapped = _NoCloseSession(db)
+        with (
+            patch.dict(
+                sys.modules,
+                {"playwright": mock_pw_module, "playwright.sync_api": mock_pw_module.sync_api},
+            ),
+            patch("app.scraper.fis.SessionLocal", return_value=wrapped),
+        ):
+            sync_athletes_from_fis()
+
+        sys.modules.update(saved)
+
+        db.expire_all()
+        athletes = db.query(Athlete).all()
+        assert len(athletes) == 1
+        assert athletes[0].name == "AALTO Antti-Pekka"

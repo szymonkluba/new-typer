@@ -5,9 +5,9 @@ import httpx
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
 
-from app.config import FIS_CALENDAR_URL, FIS_RESULTS_URL
+from app.config import FIS_ATHLETES_URL, FIS_CALENDAR_URL, FIS_RESULTS_URL
 from app.database import SessionLocal
-from app.models import Competition, Result
+from app.models import Athlete, Competition, Result
 
 logger = logging.getLogger(__name__)
 
@@ -176,6 +176,117 @@ def _parse_fis_date(text: str) -> date:
             except ValueError:
                 continue
     raise ValueError(f"Cannot parse date: {text}")
+
+
+def sync_athletes_from_fis():
+    """Scrape FIS biographies page for active male ski jumpers using Playwright."""
+    try:
+        from playwright.sync_api import sync_playwright  # noqa: F401
+    except ImportError:
+        logger.warning("Playwright not installed, skipping athlete sync")
+        return
+
+    db = SessionLocal()
+    try:
+        _scrape_athletes(db)
+    except Exception:
+        logger.exception("Failed to sync athletes from FIS")
+    finally:
+        db.close()
+
+
+def _scrape_athletes(db: Session):
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
+        context = browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            ),
+            viewport={"width": 1280, "height": 800},
+        )
+        page = context.new_page()
+        page.goto(FIS_ATHLETES_URL, wait_until="domcontentloaded", timeout=60000)
+
+        try:
+            deny_btn = page.wait_for_selector("#CybotCookiebotDialogBodyButtonDecline", timeout=5000)
+            if deny_btn:
+                deny_btn.click()
+                page.wait_for_timeout(1000)
+        except Exception:
+            pass
+
+        page.wait_for_selector(".table-row", timeout=30000)
+
+        rows = page.query_selector_all(".table-row")
+        logger.info("Found %d athlete rows", len(rows))
+
+        new_count = 0
+        updated_count = 0
+
+        for row in rows:
+            try:
+                result = _parse_athlete_row(row)
+                if result is None:
+                    continue
+                fis_code, competitor_id, name, nation = result
+
+                existing = db.query(Athlete).filter(Athlete.fis_code == fis_code).first()
+                if existing:
+                    existing.name = name
+                    existing.nation = nation
+                    existing.competitor_id = competitor_id
+                    existing.updated_at = datetime.utcnow()
+                    updated_count += 1
+                else:
+                    db.add(
+                        Athlete(
+                            fis_code=fis_code,
+                            competitor_id=competitor_id,
+                            name=name,
+                            nation=nation,
+                        )
+                    )
+                    new_count += 1
+            except Exception:
+                logger.debug("Skipping unparseable athlete row", exc_info=True)
+
+        browser.close()
+
+    db.commit()
+    logger.info("Athlete sync complete: %d new, %d updated", new_count, updated_count)
+
+
+def _parse_athlete_row(row):
+    href = row.get_attribute("href")
+    if not href or "competitorid=" not in href:
+        return None
+    try:
+        competitor_id = int(href.split("competitorid=")[1].split("&")[0])
+    except (ValueError, IndexError):
+        return None
+
+    cols = row.query_selector_all(".container > div")
+    if len(cols) < 3:
+        return None
+
+    fis_code_divs = cols[0].query_selector_all(":scope > div")
+    if len(fis_code_divs) < 2:
+        return None
+    try:
+        fis_code = int(fis_code_divs[1].inner_text().strip())
+    except (ValueError, IndexError):
+        return None
+
+    name = cols[1].inner_text().strip()
+    if not name:
+        return None
+
+    nation_el = row.query_selector(".country__name-short")
+    nation = nation_el.inner_text().strip() if nation_el else ""
+
+    return fis_code, competitor_id, name, nation
 
 
 def sync_results_from_fis():
