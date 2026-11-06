@@ -239,54 +239,58 @@ class TestMyBets:
 
 
 class TestAthleteAutocomplete:
-    def test_athletes_autocomplete_returns_matches(self, client, make_competition, make_result):
-        comp = make_competition(status="completed")
-        make_result(comp.id, 1, "Stefan Kraft", "AUT")
+    def test_autocomplete_returns_matches(self, client, make_athlete):
+        make_athlete(name="KRAFT Stefan", nation="AUT")
         resp = client.get("/bets/athletes?q=Kra")
         assert resp.status_code == 200
-        assert "Stefan Kraft" in resp.text
+        assert "KRAFT Stefan" in resp.text
 
-    def test_athletes_autocomplete_short_query(self, client):
+    def test_autocomplete_short_query(self, client):
         resp = client.get("/bets/athletes?q=K")
         assert resp.text == ""
 
-    def test_athletes_autocomplete_empty_query(self, client):
+    def test_autocomplete_empty_query(self, client):
         resp = client.get("/bets/athletes?q=")
         assert resp.text == ""
 
-    def test_athletes_autocomplete_no_match(self, client, make_competition, make_result):
-        comp = make_competition(status="completed")
-        make_result(comp.id, 1, "Stefan Kraft", "AUT")
+    def test_autocomplete_no_match_shows_empty_message(self, client, make_athlete):
+        make_athlete(name="KRAFT Stefan", nation="AUT")
         resp = client.get("/bets/athletes?q=xyz")
-        assert resp.text == ""
+        assert "suggestion-empty" in resp.text
+        assert "No athletes found" in resp.text
 
-    def test_athletes_autocomplete_max_10(self, client, make_competition, make_result):
-        comp = make_competition(status="completed")
+    def test_autocomplete_max_10(self, client, make_athlete):
         for i in range(15):
-            make_result(comp.id, i + 1, f"Athlete {i}", "POL")
-        resp = client.get("/bets/athletes?q=Athlete")
-        assert resp.text.count("<a ") <= 10
+            make_athlete(name=f"ATHLETE Test{i:02d}", nation="POL")
+        resp = client.get("/bets/athletes?q=ATHLETE")
+        assert resp.text.count("suggestion-item") <= 10
 
-    def test_athletes_autocomplete_distinct(self, client, make_competition, make_result):
-        c1 = make_competition(status="completed")
-        c2 = make_competition(status="completed")
-        make_result(c1.id, 1, "Stefan Kraft", "AUT")
-        make_result(c2.id, 1, "Stefan Kraft", "AUT")
-        resp = client.get("/bets/athletes?q=Kraft")
-        assert resp.text.count("<a ") == 1
-
-    def test_athletes_autocomplete_case_insensitive(self, client, make_competition, make_result):
-        comp = make_competition(status="completed")
-        make_result(comp.id, 1, "KRAFT Stefan", "AUT")
+    def test_autocomplete_case_insensitive(self, client, make_athlete):
+        make_athlete(name="KRAFT Stefan", nation="AUT")
         resp = client.get("/bets/athletes?q=kraft")
         assert "KRAFT Stefan" in resp.text
 
-    def test_athletes_autocomplete_no_auth_required(self, client, make_competition, make_result):
-        comp = make_competition(status="completed")
-        make_result(comp.id, 1, "Tester", "POL")
-        resp = client.get("/bets/athletes?q=Te")
+    def test_autocomplete_no_auth_required(self, client, make_athlete):
+        make_athlete(name="TESTER Name", nation="POL")
+        resp = client.get("/bets/athletes?q=TE")
         assert resp.status_code == 200
 
-    def test_athletes_autocomplete_returns_html(self, client):
+    def test_autocomplete_returns_html(self, client):
         resp = client.get("/bets/athletes?q=test")
         assert "text/html" in resp.headers["content-type"]
+
+    def test_autocomplete_shows_nation(self, client, make_athlete):
+        make_athlete(name="KRAFT Stefan", nation="AUT")
+        resp = client.get("/bets/athletes?q=Kraft")
+        assert "suggestion-nation" in resp.text
+        assert "AUT" in resp.text
+
+    def test_autocomplete_orders_by_name(self, client, make_athlete):
+        make_athlete(name="ZNISZCZOL Aleksander", nation="POL")
+        make_athlete(name="AALTO Antti", nation="FIN")
+        make_athlete(name="KRAFT Stefan", nation="AUT")
+        resp = client.get("/bets/athletes?q=an")
+        text = resp.text
+        pos_aalto = text.index("AALTO")
+        pos_zniszczol = text.index("ZNISZCZOL")
+        assert pos_aalto < pos_zniszczol

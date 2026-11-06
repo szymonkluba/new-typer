@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import get_current_user
 from app.bets.scoring import score_bet
 from app.database import get_db
-from app.models import Bet, Competition, Result, User
+from app.models import Athlete, Bet, Competition, Result, User
 from app.templating import templates
 
 router = APIRouter(prefix="/bets", tags=["bets"])
@@ -83,15 +83,32 @@ def my_bets(
 @router.get("/athletes", response_class=HTMLResponse)
 def athlete_autocomplete(
     q: str = "",
+    first: str = "",
+    second: str = "",
+    third: str = "",
     db: Session = Depends(get_db),
 ):
+    q = q or first or second or third
     if len(q) < 2:
         return ""
-    names = db.query(Result.athlete_name).filter(Result.athlete_name.ilike(f"%{q}%")).distinct().limit(10).all()
+    athletes = (
+        db.query(Athlete.name, Athlete.nation)
+        .filter(Athlete.name.ilike(f"%{q}%"))
+        .order_by(Athlete.name)
+        .limit(10)
+        .all()
+    )
+    if not athletes:
+        return '<div class="suggestion-empty">No athletes found</div>'
     html = "".join(
-        f'<a href="#" onclick="event.preventDefault();'
-        f"this.closest('.form-group').querySelector('input').value='{escape(n[0]).replace(chr(39), chr(92) + chr(39))}';"
-        f"this.parentElement.innerHTML=''\">{escape(n[0])}</a>"
-        for n in names
+        f'<a href="#" class="suggestion-item"'
+        f' onclick="event.preventDefault();'
+        f"this.closest('.form-group').querySelector('input').value="
+        f"'{escape(name).replace(chr(39), chr(92) + chr(39))}';"
+        f"this.closest('.suggestions').innerHTML=''\">"
+        f'<span class="suggestion-name">{escape(name)}</span>'
+        f'<span class="suggestion-nation">{escape(nation)}</span>'
+        f"</a>"
+        for name, nation in athletes
     )
     return html
