@@ -1,17 +1,31 @@
 import logging
 from datetime import date, datetime
 
-import httpx
-from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
 
-from app.config import FIS_ATHLETES_URL, FIS_CALENDAR_URL, FIS_RESULTS_URL
+from app.config import FIS_ATHLETES_URL, FIS_CALENDAR_URL, FIS_EVENT_URL, FIS_RESULTS_URL
 from app.database import SessionLocal
 from app.models import Athlete, Competition, Result
 
 logger = logging.getLogger(__name__)
 
-HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+_USER_AGENT = "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+
+def _launch_browser(playwright):
+    browser = playwright.chromium.launch(headless=True, args=["--no-sandbox"])
+    context = browser.new_context(user_agent=_USER_AGENT, viewport={"width": 1280, "height": 800})
+    return browser, context.new_page()
+
+
+def _dismiss_cookie_consent(page):
+    try:
+        deny_btn = page.wait_for_selector("#CybotCookiebotDialogBodyButtonDecline", timeout=5000)
+        if deny_btn:
+            deny_btn.click()
+            page.wait_for_timeout(1000)
+    except Exception:
+        pass
 
 
 def sync_competitions_from_fis():
@@ -35,24 +49,9 @@ def _scrape_calendar(db: Session):
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
-        context = browser.new_context(
-            user_agent=(
-                "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            ),
-            viewport={"width": 1280, "height": 800},
-        )
-        page = context.new_page()
+        browser, page = _launch_browser(p)
         page.goto(FIS_CALENDAR_URL, wait_until="domcontentloaded", timeout=60000)
-
-        # Dismiss cookie consent if present
-        try:
-            deny_btn = page.wait_for_selector("#CybotCookiebotDialogBodyButtonDecline", timeout=5000)
-            if deny_btn:
-                deny_btn.click()
-                page.wait_for_timeout(1000)
-        except Exception:
-            pass
+        _dismiss_cookie_consent(page)
 
         page.wait_for_selector(".table-row", timeout=30000)
 
@@ -199,23 +198,9 @@ def _scrape_athletes(db: Session):
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
-        context = browser.new_context(
-            user_agent=(
-                "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            ),
-            viewport={"width": 1280, "height": 800},
-        )
-        page = context.new_page()
+        browser, page = _launch_browser(p)
         page.goto(FIS_ATHLETES_URL, wait_until="domcontentloaded", timeout=60000)
-
-        try:
-            deny_btn = page.wait_for_selector("#CybotCookiebotDialogBodyButtonDecline", timeout=5000)
-            if deny_btn:
-                deny_btn.click()
-                page.wait_for_timeout(1000)
-        except Exception:
-            pass
+        _dismiss_cookie_consent(page)
 
         page.wait_for_selector(".table-row", timeout=30000)
 
@@ -291,6 +276,12 @@ def _parse_athlete_row(row):
 
 def sync_results_from_fis():
     """Check for results of past-date upcoming competitions."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        logger.warning("Playwright not installed, skipping results sync")
+        return
+
     db = SessionLocal()
     try:
         comps = (
@@ -298,15 +289,33 @@ def sync_results_from_fis():
             .filter(
                 Competition.status == "upcoming",
                 Competition.date <= date.today(),
-                Competition.fis_race_id.isnot(None),
+                Competition.fis_event_id.isnot(None),
             )
             .all()
         )
-        for comp in comps:
-            try:
-                _scrape_results(db, comp)
-            except Exception:
-                logger.debug(f"No results yet for {comp.name}", exc_info=True)
+        if not comps:
+            return
+
+        with sync_playwright() as p:
+            browser, page = _launch_browser(p)
+            _dismiss_cookie_consent(page)
+
+            for comp in comps:
+                try:
+                    if comp.fis_race_id is None:
+                        race_id = _resolve_race_id(page, comp)
+                        if race_id:
+                            comp.fis_race_id = race_id
+                        else:
+                            logger.debug("Could not resolve race ID for %s", comp.name)
+                            continue
+
+                    _scrape_results(db, comp, page)
+                except Exception:
+                    logger.debug("No results yet for %s", comp.name, exc_info=True)
+
+            browser.close()
+
         db.commit()
     except Exception:
         logger.exception("Failed to sync results")
@@ -314,52 +323,99 @@ def sync_results_from_fis():
         db.close()
 
 
-def _scrape_results(db: Session, competition: Competition):
+def _resolve_race_id(page, competition: Competition) -> int | None:
+    url = f"{FIS_EVENT_URL}?sectorcode=JP&eventid={competition.fis_event_id}"
+    page.goto(url, wait_until="domcontentloaded", timeout=30000)
+
+    try:
+        page.wait_for_selector("a[href*='raceid=']", timeout=15000)
+    except Exception:
+        return None
+
+    links = page.query_selector_all("a[href*='raceid=']")
+    for link in links:
+        href = link.get_attribute("href") or ""
+        text = link.inner_text().upper()
+        if "raceid=" not in href:
+            continue
+        if competition.type == "individual" and "TEAM" in text:
+            continue
+        if "QUALIFICATION" in text or "QUA" in text.split():
+            continue
+        try:
+            return int(href.split("raceid=")[1].split("&")[0])
+        except (ValueError, IndexError):
+            continue
+    return None
+
+
+def _parse_result_row(row):
+    cols = row.query_selector_all(".container > div")
+    if len(cols) < 5:
+        return None
+
+    try:
+        rank = int(cols[0].inner_text().strip())
+    except ValueError:
+        return None
+
+    try:
+        fis_code = int(cols[2].inner_text().strip())
+    except ValueError:
+        fis_code = None
+
+    name = cols[3].inner_text().strip()
+    if not name:
+        return None
+
+    nation_el = row.query_selector(".country__name-short")
+    nation = nation_el.inner_text().strip() if nation_el else ""
+
+    # Tot. Points is the second-to-last numeric column (last is Diff. Points)
+    total_points = None
+    for col in reversed(cols[5:-1]):
+        text = col.inner_text().strip()
+        if text:
+            try:
+                total_points = float(text)
+                break
+            except ValueError:
+                continue
+
+    return rank, fis_code, name, nation, total_points
+
+
+def _scrape_results(db: Session, competition: Competition, page):
     url = f"{FIS_RESULTS_URL}?sectorcode=JP&raceid={competition.fis_race_id}"
-    resp = httpx.get(url, headers=HEADERS, timeout=15, follow_redirects=True)
-    resp.raise_for_status()
+    page.goto(url, wait_until="domcontentloaded", timeout=30000)
 
-    soup = BeautifulSoup(resp.text, "lxml")
-    table = soup.select_one("#events-info-results table, .table-container table, table")
-    if not table:
-        return
-
-    rows = table.select("tbody tr, tr.table-row")
-    if not rows:
+    try:
+        page.wait_for_selector(".table-row", timeout=15000)
+    except Exception:
         return
 
     existing_results = db.query(Result).filter(Result.competition_id == competition.id).count()
     if existing_results > 0:
         return
 
-    for row in rows[:10]:
-        cells = row.select("td, div[class*='g-']")
-        if len(cells) < 4:
-            continue
-        try:
-            rank_text = cells[0].get_text(strip=True)
-            rank = int(rank_text)
-        except (ValueError, IndexError):
+    rows = page.query_selector_all(".table-row")
+    for row in rows:
+        parsed = _parse_result_row(row)
+        if parsed is None:
             continue
 
-        name = cells[2].get_text(strip=True) if len(cells) > 2 else cells[1].get_text(strip=True)
-        nation = ""
-        for cell in cells:
-            txt = cell.get_text(strip=True)
-            if len(txt) == 3 and txt.isalpha() and txt.isupper():
-                nation = txt
-                break
+        rank, fis_code, name, nation, total_points = parsed
 
-        points_text = cells[-1].get_text(strip=True) if cells else ""
-        try:
-            total_points = float(points_text)
-        except (ValueError, TypeError):
-            total_points = None
+        if fis_code:
+            athlete = db.query(Athlete).filter(Athlete.fis_code == fis_code).first()
+            if athlete:
+                name = athlete.name
 
         db.add(
             Result(
                 competition_id=competition.id,
                 rank=rank,
+                fis_code=fis_code,
                 athlete_name=name,
                 nation=nation,
                 total_points=total_points,
@@ -367,4 +423,4 @@ def _scrape_results(db: Session, competition: Competition):
         )
 
     competition.status = "completed"
-    logger.info(f"Results imported for {competition.name}")
+    logger.info("Results imported for %s", competition.name)

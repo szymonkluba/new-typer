@@ -130,10 +130,11 @@ def make_competition(db):
 
 @pytest.fixture()
 def make_result(db):
-    def _make_result(competition_id, rank, athlete_name, nation="POL", total_points=None):
+    def _make_result(competition_id, rank, athlete_name, nation="POL", total_points=None, fis_code=None):
         result = Result(
             competition_id=competition_id,
             rank=rank,
+            fis_code=fis_code,
             athlete_name=athlete_name,
             nation=nation,
             total_points=total_points,
