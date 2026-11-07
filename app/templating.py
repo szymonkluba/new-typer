@@ -23,4 +23,9 @@ def _get_current_lang():
 
 templates.env.globals["_"] = _
 templates.env.globals["current_lang"] = _get_current_lang
+def _translate_status_filter(status: str) -> str:
+    return translate(f"status_{status}", current_lang.get())
+
+
 templates.env.filters["format_date"] = _format_date_filter
+templates.env.filters["translate_status"] = _translate_status_filter
