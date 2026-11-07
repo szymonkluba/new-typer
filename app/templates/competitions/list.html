@@ -21,7 +21,7 @@
             <span class="comp-name">{{ comp.name }}</span>
             <span class="comp-type">{{ comp.type }}</span>
             <span class="badge badge-{{ comp.category | lower }}">{{ comp.category }}</span>
-            <span class="badge badge-{{ comp.status }}">{{ comp.status }}</span>
+            <span class="badge badge-{{ comp.status }}">{{ comp.status|translate_status }}</span>
             <span class="comp-arrow">&rsaquo;</span>
         </a>
         {% endfor %}

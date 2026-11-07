@@ -100,6 +100,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "betting_closed": "Typowanie zamknięte — konkurs już się rozpoczął.",
         "no_athletes_found": "Nie znaleziono zawodników",
         "results": "Wyniki",
+        # Competition statuses
+        "status_upcoming": "Nadchodzący",
+        "status_completed": "Zakończony",
+        "status_cancelled": "Odwołany",
         # My bets
         "title_my_bets": "Moje Typy",
         "pending": "Oczekuje",
@@ -178,6 +182,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "betting_closed": "Betting closed — the competition has started.",
         "no_athletes_found": "No athletes found",
         "results": "Results",
+        # Competition statuses
+        "status_upcoming": "Upcoming",
+        "status_completed": "Completed",
+        "status_cancelled": "Cancelled",
         # My bets
         "title_my_bets": "My Bets",
         "pending": "Pending",

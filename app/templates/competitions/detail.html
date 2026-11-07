@@ -10,7 +10,7 @@
             <span>{{ competition.venue }}</span>
             <span>{{ competition.date|format_date }}</span>
             <span class="badge badge-{{ competition.category | lower }}">{{ competition.category }}</span>
-            <span class="badge badge-{{ competition.status }}">{{ competition.status }}</span>
+            <span class="badge badge-{{ competition.status }}">{{ competition.status|translate_status }}</span>
         </div>
     </div>
 </section>

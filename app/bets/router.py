@@ -8,7 +8,7 @@ from app.auth.dependencies import get_current_user
 from app.bets.scoring import score_bet
 from app.database import get_db
 from app.models import Athlete, Bet, Competition, Result, User
-from app.templating import templates
+from app.templating import _, templates
 
 router = APIRouter(prefix="/bets", tags=["bets"])
 
@@ -99,7 +99,7 @@ def athlete_autocomplete(
         .all()
     )
     if not athletes:
-        return '<div class="suggestion-empty">No athletes found</div>'
+        return f'<div class="suggestion-empty">{escape(_("no_athletes_found"))}</div>'
     html = "".join(
         f'<a href="#" class="suggestion-item"'
         f' onclick="event.preventDefault();'
