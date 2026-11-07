@@ -298,12 +298,15 @@ def sync_results_from_fis():
 
         with sync_playwright() as p:
             browser, page = _launch_browser(p)
-            _dismiss_cookie_consent(page)
+            cookie_dismissed = False
 
             for comp in comps:
                 try:
                     if comp.fis_race_id is None:
                         race_id = _resolve_race_id(page, comp)
+                        if not cookie_dismissed:
+                            _dismiss_cookie_consent(page)
+                            cookie_dismissed = True
                         if race_id:
                             comp.fis_race_id = race_id
                         else:
@@ -311,6 +314,9 @@ def sync_results_from_fis():
                             continue
 
                     _scrape_results(db, comp, page)
+                    if not cookie_dismissed:
+                        _dismiss_cookie_consent(page)
+                        cookie_dismissed = True
                 except Exception:
                     logger.debug("No results yet for %s", comp.name, exc_info=True)
 
@@ -339,6 +345,8 @@ def _resolve_race_id(page, competition: Competition) -> int | None:
         if "raceid=" not in href:
             continue
         if competition.type == "individual" and "TEAM" in text:
+            continue
+        if competition.type == "team" and "TEAM" not in text:
             continue
         if "QUALIFICATION" in text or "QUA" in text.split():
             continue
@@ -399,17 +407,28 @@ def _scrape_results(db: Session, competition: Competition, page):
         return
 
     rows = page.query_selector_all(".table-row")
+
+    fis_codes = []
+    parsed_rows = []
     for row in rows:
         parsed = _parse_result_row(row)
         if parsed is None:
             continue
+        parsed_rows.append(parsed)
+        if parsed[1]:
+            fis_codes.append(parsed[1])
 
-        rank, fis_code, name, nation, total_points = parsed
+    if not parsed_rows:
+        return
 
-        if fis_code:
-            athlete = db.query(Athlete).filter(Athlete.fis_code == fis_code).first()
-            if athlete:
-                name = athlete.name
+    athletes_by_code = {}
+    if fis_codes:
+        athletes = db.query(Athlete).filter(Athlete.fis_code.in_(fis_codes)).all()
+        athletes_by_code = {a.fis_code: a.name for a in athletes}
+
+    for rank, fis_code, name, nation, total_points in parsed_rows:
+        if fis_code and fis_code in athletes_by_code:
+            name = athletes_by_code[fis_code]
 
         db.add(
             Result(
