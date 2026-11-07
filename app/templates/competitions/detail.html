@@ -76,7 +76,7 @@
 </section>
 {% endif %}
 
-{% if user_bets and betting_open %}
+{% if user_bets and competition.status == 'upcoming' %}
 <section class="card">
     <h3>{{ _("your_current_bet") }}</h3>
     <div class="bet-display">

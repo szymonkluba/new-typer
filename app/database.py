@@ -27,6 +27,11 @@ def _migrate_db():
         if "fis_code" not in columns:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE results ADD COLUMN fis_code INTEGER"))
+    if "competitions" in inspector.get_table_names():
+        columns = [col["name"] for col in inspector.get_columns("competitions")]
+        if "start_time" not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE competitions ADD COLUMN start_time TIME"))
 
 
 def create_tables():
