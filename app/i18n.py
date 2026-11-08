@@ -115,6 +115,19 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "title_leaderboard": "Tabela liderów",
         "no_players_yet": "Brak graczy.",
         "and_start_betting": "i zacznij typować!",
+        # Flash messages
+        "flash_bet_placed": "Typ został zapisany!",
+        "flash_bet_updated": "Typ został zaktualizowany!",
+        "flash_welcome": "Witamy w Typer! Konto utworzone.",
+        "flash_logged_in": "Zalogowano pomyślnie.",
+        # Accessibility
+        "skip_to_content": "Przejdź do treści",
+        "aria_main_nav": "Nawigacja główna",
+        "aria_lang_switcher": "Wybór języka",
+        "aria_toggle_menu": "Menu",
+        "loading": "Ładowanie...",
+        # Navigation
+        "back_to_competitions": "Konkursy",
     },
     "en": {
         "site_subtitle": "Ski Jumping Prediction Market",
@@ -197,6 +210,19 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "title_leaderboard": "Leaderboard",
         "no_players_yet": "No players yet.",
         "and_start_betting": "and start betting!",
+        # Flash messages
+        "flash_bet_placed": "Your bet has been placed!",
+        "flash_bet_updated": "Your bet has been updated!",
+        "flash_welcome": "Welcome to Typer! Account created.",
+        "flash_logged_in": "Logged in successfully.",
+        # Accessibility
+        "skip_to_content": "Skip to content",
+        "aria_main_nav": "Main navigation",
+        "aria_lang_switcher": "Language switcher",
+        "aria_toggle_menu": "Menu",
+        "loading": "Loading...",
+        # Navigation
+        "back_to_competitions": "Competitions",
     },
 }
 

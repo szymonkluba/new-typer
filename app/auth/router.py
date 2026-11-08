@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -43,13 +45,14 @@ def register(
             {"request": request, "errors": errors, "username": username},
         )
 
-    user = User(username=username, password_hash=hash_password(password))
-    db.add(user)
+    new_user = User(username=username, password_hash=hash_password(password))
+    db.add(new_user)
     db.commit()
 
     response = RedirectResponse(url="/", status_code=303)
-    token = create_session_token(user.id)
+    token = create_session_token(new_user.id)
     response.set_cookie(COOKIE_NAME, token, max_age=COOKIE_MAX_AGE, httponly=True)
+    response.set_cookie("flash", quote(_("flash_welcome")), max_age=10, path="/")
     return response
 
 
@@ -77,6 +80,7 @@ def login(
     response = RedirectResponse(url="/", status_code=303)
     token = create_session_token(user.id)
     response.set_cookie(COOKIE_NAME, token, max_age=COOKIE_MAX_AGE, httponly=True)
+    response.set_cookie("flash", quote(_("flash_logged_in")), max_age=10, path="/")
     return response
 
 

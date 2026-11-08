@@ -3,6 +3,7 @@
 {% block title %}{{ competition.name }}{% endblock %}
 
 {% block content %}
+<a href="/competitions" class="back-link">&larr; {{ _("back_to_competitions") }}</a>
 <section class="card">
     <div class="comp-header">
         <h2>{{ competition.name }}</h2>
@@ -29,9 +30,11 @@
             <input type="text" id="first" name="first" placeholder="{{ _("placeholder_athlete") }}"
                    value="{{ user_bets[0].athlete_name if user_bets|length > 0 else '' }}"
                    required autocomplete="off"
+                   role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggestions-1"
                    hx-get="/bets/athletes" hx-trigger="keyup changed delay:300ms"
-                   hx-target="#suggestions-1">
-            <div id="suggestions-1" class="suggestions"></div>
+                   hx-target="#suggestions-1" hx-indicator="#loading-1">
+            <span id="loading-1" class="htmx-indicator">{{ _("loading") }}</span>
+            <div id="suggestions-1" class="suggestions" role="listbox"></div>
         </div>
         <div class="form-group">
             <label>
@@ -43,9 +46,11 @@
             <input type="text" id="second" name="second" placeholder="{{ _("placeholder_athlete") }}"
                    value="{{ user_bets[1].athlete_name if user_bets|length > 1 else '' }}"
                    required autocomplete="off"
+                   role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggestions-2"
                    hx-get="/bets/athletes" hx-trigger="keyup changed delay:300ms"
-                   hx-target="#suggestions-2">
-            <div id="suggestions-2" class="suggestions"></div>
+                   hx-target="#suggestions-2" hx-indicator="#loading-2">
+            <span id="loading-2" class="htmx-indicator">{{ _("loading") }}</span>
+            <div id="suggestions-2" class="suggestions" role="listbox"></div>
         </div>
         <div class="form-group">
             <label>
@@ -57,9 +62,11 @@
             <input type="text" id="third" name="third" placeholder="{{ _("placeholder_athlete") }}"
                    value="{{ user_bets[2].athlete_name if user_bets|length > 2 else '' }}"
                    required autocomplete="off"
+                   role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggestions-3"
                    hx-get="/bets/athletes" hx-trigger="keyup changed delay:300ms"
-                   hx-target="#suggestions-3">
-            <div id="suggestions-3" class="suggestions"></div>
+                   hx-target="#suggestions-3" hx-indicator="#loading-3">
+            <span id="loading-3" class="htmx-indicator">{{ _("loading") }}</span>
+            <div id="suggestions-3" class="suggestions" role="listbox"></div>
         </div>
         <button type="submit" class="btn btn-primary btn-block">
             {{ _("btn_update_bet") if user_bets else _("btn_place_bet") }}
@@ -76,7 +83,7 @@
 </section>
 {% endif %}
 
-{% if user_bets and betting_open %}
+{% if user_bets and not betting_open %}
 <section class="card">
     <h3>{{ _("your_current_bet") }}</h3>
     <div class="bet-display">
@@ -93,7 +100,7 @@
 {% if results %}
 <section class="card">
     <h3>{{ _("results") }}</h3>
-    <table class="table">
+    <table class="table table-responsive">
         <thead>
             <tr>
                 <th>{{ _("th_rank") }}</th>
@@ -105,16 +112,16 @@
         <tbody>
             {% for r in results %}
             <tr class="{% if r.rank <= 3 %}podium-{{ r.rank }}{% endif %}">
-                <td>
+                <td data-label="{{ _('th_rank') }}">
                     {% if r.rank <= 3 %}
                         <span class="rank-badge rank-{{ r.rank }}">{{ r.rank }}</span>
                     {% else %}
                         <span class="rank-default">{{ r.rank }}</span>
                     {% endif %}
                 </td>
-                <td>{{ r.athlete_name }}</td>
-                <td>{{ r.nation }}</td>
-                <td>{{ r.total_points if r.total_points else '-' }}</td>
+                <td data-label="{{ _('th_athlete') }}">{{ r.athlete_name }}</td>
+                <td data-label="{{ _('th_nation') }}">{{ r.nation }}</td>
+                <td data-label="{{ _('th_points') }}">{{ r.total_points if r.total_points else '-' }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -123,6 +130,20 @@
 {% endif %}
 
 <script>
+function updateAriaExpanded(input) {
+    var suggestions = input.closest('.form-group').querySelector('.suggestions');
+    var hasItems = suggestions && suggestions.children.length > 0;
+    input.setAttribute('aria-expanded', hasItems);
+}
+
+document.addEventListener('htmx:afterSwap', function(e) {
+    var input = e.target.closest('.form-group');
+    if (input) {
+        var field = input.querySelector('input[type="text"]');
+        if (field) updateAriaExpanded(field);
+    }
+});
+
 document.addEventListener('keydown', function(e) {
     var input = e.target;
     if (!input.matches('.form-group input[type="text"]')) return;
@@ -132,6 +153,7 @@ document.addEventListener('keydown', function(e) {
 
     if (e.key === 'Escape') {
         suggestions.innerHTML = '';
+        input.setAttribute('aria-expanded', 'false');
         return;
     }
 
@@ -154,6 +176,8 @@ document.addEventListener('keydown', function(e) {
     } else if (e.key === 'Enter' && active) {
         e.preventDefault();
         active.click();
+        suggestions.innerHTML = '';
+        input.setAttribute('aria-expanded', 'false');
     }
 });
 </script>

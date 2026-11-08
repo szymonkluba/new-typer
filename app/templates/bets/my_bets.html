@@ -7,7 +7,7 @@
     <h2>{{ _("title_my_bets") }}</h2>
 
     {% if bet_details %}
-    <table class="table">
+    <table class="table table-responsive">
         <thead>
             <tr>
                 <th>{{ _("th_competition") }}</th>
@@ -20,13 +20,13 @@
         <tbody>
             {% for bd in bet_details %}
             <tr>
-                <td><a href="/competitions/{{ bd.competition.id }}">{{ bd.competition.name }}</a></td>
-                <td>{{ bd.competition.date|format_date }}</td>
-                <td>
+                <td data-label="{{ _('th_competition') }}"><a href="/competitions/{{ bd.competition.id }}">{{ bd.competition.name }}</a></td>
+                <td data-label="{{ _('th_date') }}">{{ bd.competition.date|format_date }}</td>
+                <td data-label="{{ _('th_position') }}">
                     <span class="position-badge position-badge-{{ bd.bet.position }}">{{ bd.bet.position }}</span>
                 </td>
-                <td>{{ bd.bet.athlete_name }}</td>
-                <td>
+                <td data-label="{{ _('th_athlete') }}">{{ bd.bet.athlete_name }}</td>
+                <td data-label="{{ _('th_points') }}">
                     {% if bd.points is not none %}
                         <span class="points points-{{ bd.points }} points-pill">{{ bd.points }}</span>
                     {% else %}

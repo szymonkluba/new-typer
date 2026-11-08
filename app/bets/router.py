@@ -1,4 +1,5 @@
 from html import escape
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -49,7 +50,10 @@ def place_bet(
             )
     db.commit()
 
-    return RedirectResponse(url=f"/competitions/{competition_id}", status_code=303)
+    msg = _("flash_bet_updated") if existing else _("flash_bet_placed")
+    response = RedirectResponse(url=f"/competitions/{competition_id}", status_code=303)
+    response.set_cookie("flash", quote(msg), max_age=10, path="/")
+    return response
 
 
 @router.get("/my")
@@ -101,11 +105,12 @@ def athlete_autocomplete(
     if not athletes:
         return f'<div class="suggestion-empty">{escape(_("no_athletes_found"))}</div>'
     html = "".join(
-        f'<a href="#" class="suggestion-item"'
+        f'<a href="#" class="suggestion-item" role="option"'
         f' onclick="event.preventDefault();'
-        f"this.closest('.form-group').querySelector('input').value="
-        f"'{escape(name).replace(chr(39), chr(92) + chr(39))}';"
-        f"this.closest('.suggestions').innerHTML=''\">"
+        f"var inp=this.closest('.form-group').querySelector('input');"
+        f"inp.value='{escape(name).replace(chr(39), chr(92) + chr(39))}';"
+        f"this.closest('.suggestions').innerHTML='';"
+        f"inp.setAttribute('aria-expanded','false')\">"
         f'<span class="suggestion-name">{escape(name)}</span>'
         f'<span class="suggestion-nation">{escape(nation)}</span>'
         f"</a>"
