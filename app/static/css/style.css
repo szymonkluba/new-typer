@@ -155,6 +155,11 @@ a:hover { color: var(--primary-hover); }
 
 .nav-links a:focus-visible { outline-offset: -2px; }
 
+.nav-links .btn-primary,
+.nav-links .btn-primary:hover {
+    color: #fff;
+}
+
 .nav-user {
     font-weight: 600;
     color: var(--accent);
