@@ -14,7 +14,7 @@
 {% if top_players %}
 <section class="card">
     <h2>{{ _("top_players") }}</h2>
-    <table class="table">
+    <table class="table table-responsive">
         <thead>
             <tr>
                 <th>{{ _("th_rank") }}</th>
@@ -25,11 +25,11 @@
         <tbody>
             {% for p in top_players %}
             <tr class="podium-{{ loop.index }}">
-                <td>
+                <td data-label="{{ _('th_rank') }}">
                     <span class="rank-badge rank-{{ loop.index }}">{{ loop.index }}</span>
                 </td>
-                <td>{{ p.user.username }}</td>
-                <td><strong class="points">{{ p.points }}</strong></td>
+                <td data-label="{{ _('th_player') }}">{{ p.user.username }}</td>
+                <td data-label="{{ _('th_points') }}"><strong class="points">{{ p.points }}</strong></td>
             </tr>
             {% endfor %}
         </tbody>

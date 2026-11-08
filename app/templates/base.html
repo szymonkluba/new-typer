@@ -12,23 +12,25 @@
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 </head>
 <body>
-    <nav class="navbar">
+    <a href="#main-content" class="skip-link">{{ _("skip_to_content") }}</a>
+
+    <nav class="navbar" aria-label="{{ _('aria_main_nav') }}">
         <div class="container">
             <a href="/" class="logo">Typer</a>
-            <div class="lang-switcher">
+            <div class="lang-switcher" role="navigation" aria-label="{{ _('aria_lang_switcher') }}">
                 {% if current_lang() == 'pl' %}
-                    <span class="lang-active">PL</span>
-                    <span class="lang-sep">|</span>
-                    <a href="/set-lang?lang=en" class="lang-link">EN</a>
+                    <span class="lang-active" aria-current="true">PL</span>
+                    <span class="lang-sep" aria-hidden="true">|</span>
+                    <a href="/set-lang?lang=en" class="lang-link" lang="en">EN</a>
                 {% else %}
-                    <a href="/set-lang?lang=pl" class="lang-link">PL</a>
-                    <span class="lang-sep">|</span>
-                    <span class="lang-active">EN</span>
+                    <a href="/set-lang?lang=pl" class="lang-link" lang="pl">PL</a>
+                    <span class="lang-sep" aria-hidden="true">|</span>
+                    <span class="lang-active" aria-current="true">EN</span>
                 {% endif %}
             </div>
-            <input type="checkbox" id="nav-toggle" class="nav-toggle">
-            <label for="nav-toggle" class="nav-toggle-label"><span></span></label>
-            <div class="nav-links">
+            <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-hidden="true">
+            <label for="nav-toggle" class="nav-toggle-label" role="button" aria-label="{{ _('aria_toggle_menu') }}" aria-expanded="false"><span></span></label>
+            <div class="nav-links" id="nav-menu">
                 <a href="/competitions">{{ _("nav_competitions") }}</a>
                 <a href="/ranking">{{ _("nav_ranking") }}</a>
                 {% if user %}
@@ -43,12 +45,40 @@
         </div>
     </nav>
 
-    <main class="container">
+    <main class="container" id="main-content">
+        {% block flash %}{% endblock %}
         {% block content %}{% endblock %}
     </main>
 
     <footer class="container">
         <p>Typer &mdash; {{ _("site_subtitle") }}</p>
     </footer>
+
+    <script>
+    (function() {
+        var toggle = document.getElementById('nav-toggle');
+        var label = document.querySelector('.nav-toggle-label');
+        if (toggle && label) {
+            toggle.addEventListener('change', function() {
+                label.setAttribute('aria-expanded', this.checked);
+            });
+        }
+        var cookie = document.cookie.split('; ').find(function(c) { return c.startsWith('flash='); });
+        if (cookie) {
+            var msg = decodeURIComponent(cookie.split('=')[1]);
+            if (msg) {
+                var main = document.getElementById('main-content');
+                var div = document.createElement('div');
+                div.className = 'alert alert-success flash';
+                div.setAttribute('role', 'status');
+                div.textContent = msg;
+                main.insertBefore(div, main.firstChild);
+                setTimeout(function() { div.style.opacity = '0'; div.style.transition = 'opacity 0.3s'; }, 4000);
+                setTimeout(function() { div.remove(); }, 4300);
+            }
+            document.cookie = 'flash=; path=/; max-age=0';
+        }
+    })();
+    </script>
 </body>
 </html>

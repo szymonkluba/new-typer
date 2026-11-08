@@ -7,7 +7,7 @@
     <h2>{{ _("title_leaderboard") }}</h2>
 
     {% if rankings %}
-    <table class="table">
+    <table class="table table-responsive">
         <thead>
             <tr>
                 <th>{{ _("th_rank") }}</th>
@@ -18,15 +18,15 @@
         <tbody>
             {% for r in rankings %}
             <tr class="{% if r.rank <= 3 %}podium-{{ r.rank }}{% endif %}">
-                <td>
+                <td data-label="{{ _('th_rank') }}">
                     {% if r.rank <= 3 %}
                         <span class="rank-badge rank-{{ r.rank }}">{{ r.rank }}</span>
                     {% else %}
                         <span class="rank-default">{{ r.rank }}</span>
                     {% endif %}
                 </td>
-                <td>{{ r.user.username }}</td>
-                <td><strong class="points">{{ r.points }}</strong></td>
+                <td data-label="{{ _('th_player') }}">{{ r.user.username }}</td>
+                <td data-label="{{ _('th_points') }}"><strong class="points">{{ r.points }}</strong></td>
             </tr>
             {% endfor %}
         </tbody>
