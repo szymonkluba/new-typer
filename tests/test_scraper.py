@@ -6,7 +6,10 @@ import pytest
 
 from app.models import Athlete, Competition, Result
 from app.scraper.fis import (
+    _create_competitions_for_event,
+    _discover_races_for_event,
     _parse_athlete_row,
+    _parse_calendar_row,
     _parse_fis_date,
     _parse_result_row,
     _resolve_race_id,
@@ -490,9 +493,277 @@ class TestSyncResults:
 # --- sync_competitions_from_fis ---
 
 
+class TestParseCalendarRow:
+    def _make_row(self, event_id=63024, venue="Wisla", date_text="22 Nov", category_text="WC", gender="M"):
+        row = MagicMock()
+
+        link = MagicMock()
+        link.get_attribute.return_value = (
+            f"https://www.fis-ski.com/DB/general/event-details.html?sectorcode=JP&eventid={event_id}"
+        )
+        row.query_selector.side_effect = lambda sel: {
+            "a[href*='eventid']": link,
+            ".g-lg-7.hidden-sm-down .split-row__item": self._text_el(venue),
+            ".g-lg-7.hidden-sm-down": self._text_el(venue),
+            ".g-lg-7.g-sm-6": self._text_el(category_text),
+        }.get(sel)
+
+        lines = [date_text, venue, category_text, gender]
+        row.inner_text.return_value = "\n".join(lines)
+        return row
+
+    @staticmethod
+    def _text_el(text):
+        el = MagicMock()
+        el.inner_text.return_value = text
+        return el
+
+    def test_returns_event_dict(self):
+        row = self._make_row()
+        result = _parse_calendar_row(row)
+        assert result is not None
+        assert result["fis_event_id"] == 63024
+        assert result["venue"] == "Wisla"
+        assert result["category"] == "WC"
+        assert result["gender"] == "M"
+
+    def test_skips_non_wc(self):
+        row = self._make_row(category_text="COC")
+        assert _parse_calendar_row(row) is None
+
+    def test_skips_women(self):
+        row = self._make_row(gender="W")
+        assert _parse_calendar_row(row) is None
+
+    def test_returns_none_without_event_link(self):
+        row = MagicMock()
+        row.query_selector.return_value = None
+        assert _parse_calendar_row(row) is None
+
+
+class TestDiscoverRaces:
+    @staticmethod
+    def _race_link(race_id, text):
+        link = MagicMock()
+        link.get_attribute.return_value = (
+            f"https://www.fis-ski.com/DB/general/results.html?sectorcode=JP&raceid={race_id}"
+        )
+        link.inner_text.return_value = text
+        return link
+
+    def test_discovers_multiple_races(self):
+        page = MagicMock()
+        page.query_selector_all.return_value = [
+            self._race_link(8001, "Individual Large Hill Qualification"),
+            self._race_link(8002, "Individual Large Hill"),
+            self._race_link(8003, "Team Large Hill"),
+            self._race_link(8004, "Individual Normal Hill Qualification"),
+            self._race_link(8005, "Individual Normal Hill"),
+        ]
+
+        races = _discover_races_for_event(page, 63024)
+        assert len(races) == 3
+        types = {r["type"] for r in races}
+        assert types == {"individual", "team"}
+        race_ids = {r["fis_race_id"] for r in races}
+        assert race_ids == {8002, 8003, 8005}
+
+    def test_skips_qualifications(self):
+        page = MagicMock()
+        page.query_selector_all.return_value = [
+            self._race_link(8001, "Individual Large Hill Qualification"),
+            self._race_link(8002, "Individual Large Hill"),
+        ]
+
+        races = _discover_races_for_event(page, 63024)
+        assert len(races) == 1
+        assert races[0]["fis_race_id"] == 8002
+
+    def test_skips_training_and_trial(self):
+        page = MagicMock()
+        page.query_selector_all.return_value = [
+            self._race_link(8001, "Training Round"),
+            self._race_link(8002, "Trial Round"),
+            self._race_link(8003, "Individual Large Hill"),
+        ]
+
+        races = _discover_races_for_event(page, 63024)
+        assert len(races) == 1
+        assert races[0]["fis_race_id"] == 8003
+
+    def test_deduplicates_race_ids(self):
+        page = MagicMock()
+        page.query_selector_all.return_value = [
+            self._race_link(8002, "Individual Large Hill"),
+            self._race_link(8002, "Individual Large Hill"),
+        ]
+
+        races = _discover_races_for_event(page, 63024)
+        assert len(races) == 1
+
+    def test_returns_empty_on_timeout(self):
+        page = MagicMock()
+        page.wait_for_selector.side_effect = Exception("timeout")
+
+        races = _discover_races_for_event(page, 63024)
+        assert races == []
+
+    def test_identifies_team_type(self):
+        page = MagicMock()
+        page.query_selector_all.return_value = [
+            self._race_link(8003, "Team Large Hill"),
+        ]
+
+        races = _discover_races_for_event(page, 63024)
+        assert races[0]["type"] == "team"
+
+
+class TestCreateCompetitionsForEvent:
+    @staticmethod
+    def _race_link(race_id, text):
+        link = MagicMock()
+        link.get_attribute.return_value = (
+            f"https://www.fis-ski.com/DB/general/results.html?sectorcode=JP&raceid={race_id}"
+        )
+        link.inner_text.return_value = text
+        return link
+
+    def test_creates_multiple_competitions(self, db, test_engine):
+        page = MagicMock()
+        page.query_selector_all.return_value = [
+            self._race_link(8002, "Individual Large Hill"),
+            self._race_link(8003, "Team Large Hill"),
+            self._race_link(8005, "Individual Normal Hill"),
+        ]
+
+        event = {
+            "fis_event_id": 63024,
+            "venue": "Wisla",
+            "date": date(2027, 1, 15),
+            "category": "WC",
+            "gender": "M",
+        }
+
+        _create_competitions_for_event(db, page, event)
+        db.flush()
+
+        comps = db.query(Competition).filter(Competition.fis_event_id == 63024).all()
+        assert len(comps) == 3
+        types = {c.type for c in comps}
+        assert types == {"individual", "team"}
+        assert all(c.fis_race_id is not None for c in comps)
+        assert all(c.venue == "Wisla" for c in comps)
+
+    def test_skips_existing_race_ids(self, db, make_competition, test_engine):
+        make_competition(fis_event_id=63024, fis_race_id=8002, name="Existing")
+
+        page = MagicMock()
+        page.query_selector_all.return_value = [
+            self._race_link(8002, "Individual Large Hill"),
+            self._race_link(8003, "Team Large Hill"),
+        ]
+
+        event = {
+            "fis_event_id": 63024,
+            "venue": "Wisla",
+            "date": date(2027, 1, 15),
+            "category": "WC",
+            "gender": "M",
+        }
+
+        _create_competitions_for_event(db, page, event)
+        db.flush()
+
+        comps = db.query(Competition).filter(Competition.fis_event_id == 63024).all()
+        assert len(comps) == 2
+        existing = db.query(Competition).filter(Competition.fis_race_id == 8002).first()
+        assert existing.name == "Existing"
+
+    def test_upgrades_legacy_competition(self, db, make_competition, test_engine):
+        legacy = make_competition(fis_event_id=63024, fis_race_id=None, comp_type="individual", name="Legacy")
+        legacy_id = legacy.id
+
+        page = MagicMock()
+        page.query_selector_all.return_value = [
+            self._race_link(8002, "Individual Large Hill"),
+            self._race_link(8003, "Team Large Hill"),
+        ]
+
+        event = {
+            "fis_event_id": 63024,
+            "venue": "Wisla",
+            "date": date(2027, 1, 15),
+            "category": "WC",
+            "gender": "M",
+        }
+
+        _create_competitions_for_event(db, page, event)
+        db.flush()
+
+        db.expire_all()
+        upgraded = db.query(Competition).filter(Competition.id == legacy_id).first()
+        assert upgraded.fis_race_id == 8002
+
+        comps = db.query(Competition).filter(Competition.fis_event_id == 63024).all()
+        assert len(comps) == 2
+
+    def test_fallback_single_competition_when_no_races(self, db, test_engine):
+        page = MagicMock()
+        page.wait_for_selector.side_effect = Exception("timeout")
+
+        event = {
+            "fis_event_id": 63024,
+            "venue": "Wisla",
+            "date": date(2027, 1, 15),
+            "category": "WC",
+            "gender": "M",
+        }
+
+        _create_competitions_for_event(db, page, event)
+        db.flush()
+
+        comps = db.query(Competition).filter(Competition.fis_event_id == 63024).all()
+        assert len(comps) == 1
+        assert comps[0].fis_race_id is None
+
+    def test_skips_fallback_when_event_exists(self, db, make_competition, test_engine):
+        make_competition(fis_event_id=63024, name="Existing")
+
+        page = MagicMock()
+        page.wait_for_selector.side_effect = Exception("timeout")
+
+        event = {
+            "fis_event_id": 63024,
+            "venue": "Wisla",
+            "date": date(2027, 1, 15),
+            "category": "WC",
+            "gender": "M",
+        }
+
+        _create_competitions_for_event(db, page, event)
+        db.flush()
+
+        comps = db.query(Competition).filter(Competition.fis_event_id == 63024).all()
+        assert len(comps) == 1
+
+    def test_skips_none_event_id(self, db, test_engine):
+        page = MagicMock()
+        event = {
+            "fis_event_id": None,
+            "venue": "Wisla",
+            "date": date(2027, 1, 15),
+            "category": "WC",
+            "gender": "M",
+        }
+
+        _create_competitions_for_event(db, page, event)
+        db.flush()
+
+        assert db.query(Competition).count() == 0
+
+
 class TestSyncCompetitions:
     def test_sync_competitions_skips_without_playwright(self):
-        # Setting a module to None in sys.modules causes ImportError on import
         saved = {k: sys.modules.pop(k) for k in list(sys.modules) if k.startswith("playwright")}
         with patch.dict(sys.modules, {"playwright": None, "playwright.sync_api": None}):
             sync_competitions_from_fis()

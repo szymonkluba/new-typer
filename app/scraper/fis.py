@@ -57,11 +57,25 @@ def _scrape_calendar(db: Session):
 
         rows = page.query_selector_all(".table-row")
         logger.info("Found %d calendar rows", len(rows))
+
+        events = []
         for row in rows:
             try:
-                _parse_calendar_row(row, db)
+                event = _parse_calendar_row(row)
+                if event:
+                    events.append(event)
             except Exception:
                 logger.debug("Skipping unparseable calendar row", exc_info=True)
+
+        for event in events:
+            try:
+                _create_competitions_for_event(db, page, event)
+            except Exception:
+                logger.debug(
+                    "Failed to discover races for event %s",
+                    event.get("fis_event_id"),
+                    exc_info=True,
+                )
 
         browser.close()
 
@@ -69,30 +83,23 @@ def _scrape_calendar(db: Session):
     logger.info("Calendar sync complete")
 
 
-def _parse_calendar_row(row, db: Session):
+def _parse_calendar_row(row) -> dict | None:
+    """Parse a calendar row and return event metadata, or None to skip."""
     link = row.query_selector("a[href*='eventid']")
     if not link:
-        return
+        return None
     href = link.get_attribute("href")
     fis_event_id = None
     if href and "eventid=" in href:
         try:
             fis_event_id = int(href.split("eventid=")[1].split("&")[0])
         except (ValueError, IndexError):
-            return
-
-    if fis_event_id:
-        existing = db.query(Competition).filter(Competition.fis_event_id == fis_event_id).first()
-        if existing:
-            return
+            return None
 
     text = row.inner_text()
     lines = [l.strip() for l in text.split("\n") if l.strip()]
 
-    # FIS row structure: [status letters..., date, venue, nation, category, event_type, discipline, gender...]
-    # Status letters are single chars like D/P/C, skip them to find the date
     date_text = ""
-    venue = "Unknown"
     data_lines = [l for l in lines if len(l) > 1 or not l.isalpha()]
     for line in data_lines:
         if any(
@@ -102,21 +109,15 @@ def _parse_calendar_row(row, db: Session):
             date_text = line
             break
 
-    # Venue: the element with class containing g-lg-7 and hidden-sm-down
     venue_el = row.query_selector(".g-lg-7.hidden-sm-down .split-row__item")
     if not venue_el:
         venue_el = row.query_selector(".g-lg-7.hidden-sm-down")
-    if venue_el:
-        venue = venue_el.inner_text().strip()
+    venue = venue_el.inner_text().strip() if venue_el else "Unknown"
 
-    # Category and event type from the category cell
     cat_el = row.query_selector(".g-lg-7.g-sm-6")
     category = "WC"
-    comp_type = "individual"
     if cat_el:
         cat_text = cat_el.inner_text().upper()
-        if "TEAM" in cat_text and "IND" not in cat_text:
-            comp_type = "team"
         for cat in ["WC", "GP", "COC", "QUA"]:
             if cat in cat_text:
                 category = cat
@@ -130,28 +131,136 @@ def _parse_calendar_row(row, db: Session):
         gender = "M"
 
     if category != "WC" or gender != "M":
-        return
+        return None
 
     try:
         comp_date = _parse_fis_date(date_text)
     except (ValueError, IndexError):
         logger.warning("Unparseable date '%s' for %s, skipping row", date_text, venue)
+        return None
+
+    return {
+        "fis_event_id": fis_event_id,
+        "venue": venue,
+        "date": comp_date,
+        "category": category,
+        "gender": gender,
+    }
+
+
+def _discover_races_for_event(page, fis_event_id: int) -> list[dict]:
+    """Visit event details page and return all non-qualification races."""
+    url = f"{FIS_EVENT_URL}?sectorcode=JP&eventid={fis_event_id}"
+    page.goto(url, wait_until="domcontentloaded", timeout=30000)
+
+    try:
+        page.wait_for_selector("a[href*='raceid=']", timeout=15000)
+    except Exception:
+        return []
+
+    links = page.query_selector_all("a[href*='raceid=']")
+    races = []
+    seen_race_ids = set()
+
+    for link in links:
+        href = link.get_attribute("href") or ""
+        if "raceid=" not in href:
+            continue
+        text = link.inner_text().strip()
+        upper_text = text.upper()
+
+        skip_keywords = ("QUALIFICATION", "TRAINING", "TRIAL", "PROLOGUE")
+        if any(kw in upper_text for kw in skip_keywords) or "QUA" in upper_text.split():
+            continue
+
+        try:
+            race_id = int(href.split("raceid=")[1].split("&")[0])
+        except (ValueError, IndexError):
+            continue
+
+        if race_id in seen_race_ids:
+            continue
+        seen_race_ids.add(race_id)
+
+        race_type = "team" if "TEAM" in upper_text else "individual"
+
+        races.append(
+            {
+                "fis_race_id": race_id,
+                "type": race_type,
+                "description": text,
+            }
+        )
+
+    return races
+
+
+def _create_competitions_for_event(db: Session, page, event: dict):
+    """Discover races for an event and create Competition records."""
+    fis_event_id = event["fis_event_id"]
+    if not fis_event_id:
         return
 
-    name = f"Ski Jumping {category} - {venue}"
+    races = _discover_races_for_event(page, fis_event_id)
 
-    comp = Competition(
-        fis_event_id=fis_event_id,
-        name=name,
-        venue=venue,
-        date=comp_date,
-        category=category,
-        type=comp_type,
-        gender=gender,
-        status="upcoming",
+    if not races:
+        existing = db.query(Competition).filter(Competition.fis_event_id == fis_event_id).first()
+        if existing:
+            return
+        comp = Competition(
+            fis_event_id=fis_event_id,
+            name=f"Ski Jumping {event['category']} - {event['venue']}",
+            venue=event["venue"],
+            date=event["date"],
+            category=event["category"],
+            type="individual",
+            gender=event["gender"],
+            status="upcoming",
+        )
+        db.add(comp)
+        logger.info("Added competition: %s (%s)", comp.name, event["date"])
+        return
+
+    # Upgrade legacy competitions (created before per-race scraping)
+    legacy_comps = list(
+        db.query(Competition)
+        .filter(
+            Competition.fis_event_id == fis_event_id,
+            Competition.fis_race_id.is_(None),
+        )
+        .all()
     )
-    db.add(comp)
-    logger.info("Added competition: %s (%s, %s)", name, venue, comp_date)
+
+    for race in races:
+        existing = db.query(Competition).filter(Competition.fis_race_id == race["fis_race_id"]).first()
+        if existing:
+            continue
+
+        upgraded = False
+        for i, legacy in enumerate(legacy_comps):
+            if legacy.type == race["type"]:
+                legacy.fis_race_id = race["fis_race_id"]
+                legacy.name = f"Ski Jumping {event['category']} - {event['venue']} - {race['description']}"
+                logger.info("Upgraded competition: %s (race_id=%d)", legacy.name, race["fis_race_id"])
+                legacy_comps.pop(i)
+                upgraded = True
+                break
+
+        if not upgraded:
+            name = f"Ski Jumping {event['category']} - {event['venue']} - {race['description']}"
+            comp = Competition(
+                fis_event_id=fis_event_id,
+                fis_race_id=race["fis_race_id"],
+                name=name,
+                venue=event["venue"],
+                date=event["date"],
+                category=event["category"],
+                type=race["type"],
+                gender=event["gender"],
+                status="upcoming",
+            )
+            db.add(comp)
+            logger.info("Added competition: %s (%s, %s)", name, event["venue"], event["date"])
 
 
 def _parse_fis_date(text: str) -> date:
