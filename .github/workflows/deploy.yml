@@ -1,0 +1,120 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    uses: ./.github/workflows/tests.yml
+
+  lint:
+    uses: ./.github/workflows/lint.yml
+
+  deploy:
+    needs: [test, lint]
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.OCI_SSH_PRIVATE_KEY }}" > ~/.ssh/oci_key
+          chmod 600 ~/.ssh/oci_key
+          ssh-keyscan -H ${{ vars.VM_HOST || '144.24.161.5' }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy to OCI VM
+        env:
+          VM_HOST: ${{ vars.VM_HOST || '144.24.161.5' }}
+          VM_USER: ${{ vars.VM_USER || 'opc' }}
+          APP_DIR: ${{ vars.APP_DIR || '/home/opc/typer' }}
+          PROD_URL: ${{ vars.PROD_URL || 'https://skijtyper.pl' }}
+        run: |
+          SSH="ssh -i ~/.ssh/oci_key -o StrictHostKeyChecking=no -o LogLevel=ERROR ${VM_USER}@${VM_HOST}"
+
+          echo "=== Pulling latest code ==="
+          PULL_OUTPUT=$($SSH "cd ${APP_DIR} && git pull" 2>&1)
+          echo "$PULL_OUTPUT"
+
+          NEEDS_STATIC=""
+          if echo "$PULL_OUTPUT" | grep -q "app/static/"; then
+            NEEDS_STATIC="yes"
+          fi
+
+          echo "=== Rebuilding container ==="
+          $SSH "cd ${APP_DIR} && docker compose up -d --build" 2>&1
+
+          if [ -n "$NEEDS_STATIC" ]; then
+            echo "=== Syncing static files ==="
+            $SSH "sudo cp -r ${APP_DIR}/app/static/* /var/www/typer/static/ && sudo restorecon -Rv /var/www/typer/static/" 2>&1
+          fi
+
+          echo "=== Waiting for container health ==="
+          for i in $(seq 1 60); do
+            HEALTH=$($SSH "docker inspect --format='{{.State.Health.Status}}' typer-app" 2>/dev/null || echo "unknown")
+            if [ "$HEALTH" = "healthy" ]; then
+              echo "Container healthy after ${i}s"
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$HEALTH" != "healthy" ]; then
+            echo "ERROR: Container not healthy after 120s (status: $HEALTH)"
+            $SSH "docker logs typer-app --tail 30" 2>&1
+            exit 1
+          fi
+
+      - name: Verify deployment
+        env:
+          PROD_URL: ${{ vars.PROD_URL || 'https://skijtyper.pl' }}
+        run: |
+          FAIL=0
+
+          check() {
+            local desc="$1" url="$2" expect="$3"
+            body=$(curl -sf -b "lang=en" "$url" 2>/dev/null || true)
+            if echo "$body" | grep -qi "$expect"; then
+              echo "PASS: $desc"
+            else
+              echo "FAIL: $desc (expected '$expect')"
+              FAIL=$((FAIL + 1))
+            fi
+          }
+
+          check "health endpoint" "${PROD_URL}/health" '"status":"ok"'
+          check "homepage" "${PROD_URL}/" "Typer"
+          check "competitions" "${PROD_URL}/competitions" "ompetition"
+          check "login" "${PROD_URL}/auth/login" "ogin"
+          check "ranking" "${PROD_URL}/ranking" "anking"
+
+          # i18n
+          body_pl=$(curl -sf -b "lang=pl" "${PROD_URL}/" 2>/dev/null || true)
+          if echo "$body_pl" | grep -qi "Rynek Prognostyczny"; then
+            echo "PASS: Polish i18n"
+          else
+            echo "FAIL: Polish i18n"
+            FAIL=$((FAIL + 1))
+          fi
+
+          # Static assets
+          status=$(curl -s -o /dev/null -w '%{http_code}' "${PROD_URL}/static/css/style.css" 2>/dev/null || echo "000")
+          if [ "$status" = "200" ]; then
+            echo "PASS: static CSS (HTTP 200)"
+          else
+            echo "FAIL: static CSS (HTTP $status)"
+            FAIL=$((FAIL + 1))
+          fi
+
+          if [ "$FAIL" -gt 0 ]; then
+            echo "Verification failed: $FAIL check(s)"
+            exit 1
+          fi
+          echo "All checks passed"
